@@ -1,0 +1,1765 @@
+<title>Lime</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&family=Press+Start+2P&display=swap">
+<style>
+/* Calx, the Clockwork City. One reading column; tab bar on phones, rail on wide screens; lesson + workbench side by side on very wide screens. Each district recolours the accent. */
+:root{
+  --bg:#EDF3DF; --panel:#FBFDF4; --ink:#17230E; --muted:#51613F; --line:#17230E;
+  --accent:#8BD122; --accent-ink:#17230E;
+  --accent-soft:color-mix(in srgb, var(--accent) 24%, var(--panel));
+  --ok:#17803B; --ok-soft:#CBEAD2; --bad:#B8341D; --bad-soft:#F5D2CA; --warn:#8A5F00; --warn-soft:#F6E5AE;
+  --code-bg:#12200B; --code-ink:#E4F4C6; --shadow:#17230E; --dim:#3A4630;
+  --pix:'Press Start 2P', ui-monospace, Menlo, Consolas, monospace;
+  --body:'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono:'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B1206; --panel:#142010; --ink:#E6F2D0; --muted:#9CB286; --line:#5E8038;
+    --ok:#5BD58C; --ok-soft:#173A25; --bad:#FF907A; --bad-soft:#48211A; --warn:#F2C14E; --warn-soft:#3E3210;
+    --code-bg:#091004; --code-ink:#E4F4C6; --shadow:#000; --dim:#26321C; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B1206; --panel:#142010; --ink:#E6F2D0; --muted:#9CB286; --line:#5E8038;
+  --ok:#5BD58C; --ok-soft:#173A25; --bad:#FF907A; --bad-soft:#48211A; --warn:#F2C14E; --warn-soft:#3E3210;
+  --code-bg:#091004; --code-ink:#E4F4C6; --shadow:#000; --dim:#26321C; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:0 calc(88px + env(safe-area-inset-bottom,0px))}
+button,input,textarea,select{font:inherit;color:inherit}
+a{color:inherit}
+h1,h2,h3{text-wrap:balance;margin:0}
+code{font-family:var(--mono);font-size:.88em;background:var(--accent-soft);padding:.05em .3em;border:1px solid color-mix(in srgb,var(--line) 35%,transparent)}
+.app{max-width:1040px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr)}
+.top{display:flex;align-items:center;gap:12px;padding:14px 0 10px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--pix);font-size:18px;letter-spacing:.5px;text-decoration:none}
+.chips{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{font-family:var(--pix);font-size:9px;line-height:1.6;padding:6px 8px;border:2px solid var(--line);background:var(--panel);box-shadow:2px 2px 0 var(--shadow);white-space:nowrap;text-decoration:none}
+.chip.hot{background:var(--accent);color:var(--accent-ink)}
+main{min-width:0;padding:6px 0 24px}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;background:var(--panel);border-top:2px solid var(--line);
+  padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+.nav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:7px 2px;text-decoration:none;font-family:var(--pix);font-size:8px;color:var(--muted);position:relative;border:2px solid transparent;min-width:0}
+.nav a svg{width:22px;height:22px}
+.nav a[aria-current="page"]{color:var(--accent-ink);background:var(--accent);border-color:var(--line)}
+.nav .badge{position:absolute;top:2px;right:calc(50% - 26px);background:var(--bad);color:#fff;font-size:8px;padding:2px 4px;border:2px solid var(--line)}
+@media (min-width:900px){
+  body{padding-bottom:40px}
+  .app{grid-template-columns:200px minmax(0,1fr);column-gap:28px}
+  .top{grid-column:1 / -1}
+  .nav{position:sticky;top:12px;bottom:auto;align-self:start;flex-direction:column;border:2px solid var(--line);box-shadow:3px 3px 0 var(--shadow);padding:8px;gap:4px;grid-row:2}
+  .nav a{flex-direction:row;gap:10px;font-size:10px;padding:10px 8px}
+  .nav .badge{position:static;margin-left:auto}
+  main{grid-row:2;grid-column:2;max-width:760px}
+}
+@media (min-width:1280px){
+  .app.split{max-width:1500px}
+  .app.split main{max-width:none}
+  .lgrid{display:grid;grid-template-columns:minmax(0,1fr) 440px;gap:28px;align-items:start}
+  .aside{display:block!important;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
+  .tobench{display:inline-flex!important}
+}
+.aside{display:none}
+.tobench{display:none!important}
+.card{background:var(--panel);border:2px solid var(--line);box-shadow:4px 4px 0 var(--shadow);padding:16px;margin:0 0 18px}
+.card.tight{padding:12px 14px}
+.h-pix{font-family:var(--pix);font-size:12px;line-height:1.8;margin:0 0 10px}
+.sub{color:var(--muted);font-size:15px}
+h1.title{font-family:var(--pix);font-size:16px;line-height:1.7;margin:4px 0 8px}
+h2.sec{font-family:var(--pix);font-size:12px;line-height:1.7;margin:30px 0 12px;display:flex;align-items:center;gap:10px}
+h2.sec::after{content:"";flex:1;border-top:2px dashed var(--line);opacity:.5}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-family:var(--pix);font-size:10px;line-height:1.4;padding:12px 14px;min-height:44px;
+  background:var(--accent);color:var(--accent-ink);border:2px solid var(--line);box-shadow:3px 3px 0 var(--shadow);text-decoration:none;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.btn:hover{filter:brightness(1.05)}
+.btn:active:not(:disabled){transform:translate(3px,3px);box-shadow:0 0 0 var(--shadow)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.ghost{background:var(--panel);color:var(--ink)}
+.btn.warn{background:var(--warn-soft);color:var(--ink)}
+.btn.danger{background:var(--bad-soft);color:var(--ink)}
+.btn.small{font-size:9px;padding:8px 10px;min-height:38px}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.bar{height:14px;border:2px solid var(--line);background:var(--panel);position:relative}
+.bar>i{position:absolute;inset:0 auto 0 0;background:var(--accent);display:block}
+.mission{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:2px dashed color-mix(in srgb,var(--line) 40%,transparent)}
+.mission:first-of-type{border-top:0}
+.mission .t{flex:1;min-width:0}
+.mission .t b{display:block}
+.tick{width:22px;height:22px;border:2px solid var(--line);flex:none;display:grid;place-items:center;font-family:var(--pix);font-size:9px;background:var(--panel)}
+.tick.on{background:var(--ok-soft);color:var(--ok)}
+.tick.part{background:var(--warn-soft)}
+.tick.lock{background:var(--dim);color:var(--muted)}
+.tag{font-family:var(--pix);font-size:8px;padding:4px 6px;border:2px solid var(--line);background:var(--panel);white-space:nowrap}
+.tag.live{background:var(--accent);color:var(--accent-ink)}
+.tag.fact{background:var(--warn-soft)}
+.crumb{font-family:var(--pix);font-size:9px;text-decoration:none;color:var(--muted);display:inline-block;margin:6px 0 4px}
+.prose{max-width:68ch}
+.prose h3{font-family:var(--pix);font-size:11px;line-height:1.8;margin:30px 0 10px}
+.prose p,.rich p{margin:0 0 14px}
+.rich p:last-child{margin-bottom:0}
+.prose ul,.rich ul{margin:0 0 14px;padding-left:22px}
+.prose li,.rich li{margin:0 0 6px}
+pre.src{margin:10px 0;padding:12px 14px;background:var(--code-bg);color:var(--code-ink);font-family:var(--mono);font-size:14px;overflow:auto;line-height:1.55;border:2px solid var(--line)}
+.note{margin:16px 0;padding:12px 14px 12px 16px;border:2px solid var(--line);background:var(--panel)}
+.note .nl{font-family:var(--pix);font-size:8px;display:block;margin-bottom:6px;letter-spacing:.3px}
+.note.model{background:var(--accent-soft)}
+.note.trap{background:var(--bad-soft)}
+.note.tip{background:var(--warn-soft)}
+.note p{margin:0 0 8px}.note p:last-child{margin:0}
+.nit{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:2px solid var(--line);background:var(--accent-soft);margin:10px 0;font-size:15.5px}
+.nit svg{flex:none;margin-top:2px}
+.nit b{font-family:var(--pix);font-size:8px;display:block;margin-bottom:3px}
+.cell,.ex{margin:16px 0;border:2px solid var(--line);background:var(--code-bg);box-shadow:3px 3px 0 var(--shadow)}
+.ed{position:relative}
+.ta{display:block;width:100%;min-height:56px;resize:none;border:0;outline:0;background:transparent;color:var(--code-ink);font-family:var(--mono);font-size:14.5px;line-height:1.55;padding:12px 14px;white-space:pre;overflow:auto;tab-size:4}
+.ta:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+.keys{display:none;gap:4px;padding:6px;border-top:1px solid #2c4118;overflow-x:auto;background:#0e1a08}
+@media (pointer:coarse){.ed:focus-within .keys{display:flex}}
+.keys button{flex:none;min-width:42px;min-height:42px;background:#223616;color:#E4F4C6;border:1px solid #3f5a28;font-family:var(--mono);font-size:16px;cursor:pointer}
+.bar2{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 10px;background:var(--panel);border-top:2px solid var(--line)}
+.bar2 .sp{flex:1}
+.out{margin:0;padding:10px 14px;background:#0a1405;color:#C9E5A0;font-family:var(--mono);font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;border-top:2px solid var(--line);max-height:320px;overflow:auto}
+.out .err{color:#FF9B85;display:block}
+.out .dim{color:#7f9a66}
+.explain{padding:10px 14px;background:var(--bad-soft);border-top:2px solid var(--line);font-size:15px}
+.explain b{font-family:var(--pix);font-size:8px;display:block;margin-bottom:4px}
+.ex .hd{display:flex;gap:10px;align-items:center;background:var(--panel);padding:12px 14px;border-bottom:2px solid var(--line);flex-wrap:wrap}
+.ex .hd b{font-family:var(--pix);font-size:10px;line-height:1.7;flex:1;min-width:0}
+.ex .pr{background:var(--panel);padding:12px 14px;border-bottom:2px solid var(--line)}
+.ex .pr p{margin:0 0 8px}.ex .pr p:last-child{margin:0}
+.res{list-style:none;margin:0;padding:10px 14px;background:var(--panel);border-top:2px solid var(--line)}
+.res li{display:flex;gap:10px;padding:5px 0;align-items:flex-start}
+.res li>.nit{flex:1;margin:4px 0}
+.res .m{font-family:var(--pix);font-size:9px;width:20px;flex:none;margin-top:4px}
+.res .ok .m{color:var(--ok)}.res .no .m{color:var(--bad)}
+.res .why{display:block;font-size:14.5px;color:var(--muted)}
+.box{padding:10px 14px;background:var(--warn-soft);border-top:2px solid var(--line);font-size:15.5px}
+.box.sol{background:var(--panel)}
+.box pre{margin:8px 0 0;padding:10px;background:var(--code-bg);color:var(--code-ink);font-family:var(--mono);font-size:13.5px;overflow:auto;border:2px solid var(--line)}
+.win{background:var(--ok-soft);padding:10px 14px;border-top:2px solid var(--line);font-size:15px}
+.win b{font-family:var(--pix);font-size:9px;display:block;margin-bottom:4px}
+.pred{margin:16px 0;border:2px solid var(--line);background:var(--panel);box-shadow:3px 3px 0 var(--shadow)}
+.pred .hd{padding:10px 14px;border-bottom:2px solid var(--line);font-family:var(--pix);font-size:9px;line-height:1.7}
+.pred pre.src{margin:0;border:0;border-bottom:2px solid var(--line)}
+.pred .in{padding:10px 14px}
+.pred textarea,.teach textarea{width:100%;min-height:72px;font-family:var(--mono);font-size:14px;background:var(--bg);border:2px solid var(--line);padding:8px 10px;resize:vertical;white-space:pre}
+.teach textarea{font-family:var(--body);white-space:normal;min-height:120px}
+.pred .fb{padding:10px 14px;border-top:2px solid var(--line)}
+.pred .fb.ok{background:var(--ok-soft)}.pred .fb.no{background:var(--bad-soft)}
+.pred .fb pre{margin:6px 0;font-family:var(--mono);font-size:13.5px;white-space:pre-wrap}
+.pz{margin:16px 0;border:2px solid var(--line);background:var(--panel);box-shadow:3px 3px 0 var(--shadow)}
+.pz .hd{display:flex;gap:10px;align-items:center;padding:10px 14px;border-bottom:2px solid var(--line);font-family:var(--pix);font-size:9px;line-height:1.7}
+.pz .hd span:first-child{flex:1}
+.pz .zone{padding:10px 14px;display:flex;flex-direction:column;gap:6px;min-height:60px}
+.pz .zone.ans{background:var(--code-bg);border-top:2px solid var(--line);border-bottom:2px solid var(--line)}
+.pz .zl{font-family:var(--pix);font-size:8px;color:var(--muted)}
+.pz .zone.ans .zl{color:#9fbf7c}
+.pz .ln{display:block;width:100%;text-align:left;font-family:var(--mono);font-size:14px;white-space:pre;padding:8px 10px;border:2px solid var(--line);background:var(--bg);cursor:pointer;min-height:40px;overflow-x:auto}
+.pz .zone.ans .ln{background:#1d3311;color:var(--code-ink);border-color:#3f5a28}
+.pz .ln .n{color:#7f9a66;margin-right:10px;user-select:none}
+.teach{margin:16px 0;border:2px solid var(--line);background:var(--panel);box-shadow:3px 3px 0 var(--shadow);padding:14px}
+.goals{margin:8px 0 0;padding-left:20px}
+.pstrip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0 4px}
+.pstrip div{font-family:var(--pix);font-size:8px;line-height:1.8}
+.pstrip .bar{margin-top:6px;height:12px}
+.scene{border:2px solid var(--line);background:var(--panel);box-shadow:4px 4px 0 var(--shadow);margin:0 0 18px;display:block}
+.scene .art,.art{background:var(--code-bg);border-bottom:2px solid var(--line);display:flex;justify-content:center;padding:10px}
+.art svg{width:100%;max-width:440px;height:auto;image-rendering:pixelated}
+.scene .body{padding:14px 16px}
+.scene .foot{display:flex;gap:10px;padding:10px 16px;border-top:2px solid var(--line);align-items:center;flex-wrap:wrap}
+.scene .foot .sp{flex:1}
+.scene summary{cursor:pointer;padding:12px 16px;font-family:var(--pix);font-size:10px;line-height:1.7}
+.map{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (min-width:640px){.map{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.dtile{display:flex;flex-direction:column;gap:6px;text-decoration:none;border:2px solid var(--line);background:var(--panel);box-shadow:3px 3px 0 var(--shadow);padding:10px;position:relative;min-width:0}
+.dtile svg{width:100%;height:auto;image-rendering:pixelated;border:2px solid var(--line)}
+.dtile b{font-family:var(--pix);font-size:9px;line-height:1.6}
+.dtile .num{position:absolute;top:14px;left:14px;font-family:var(--pix);font-size:8px;background:var(--panel);border:2px solid var(--line);padding:3px 5px}
+.dtile.locked{opacity:.78}
+.dtile .tag{align-self:flex-start}
+.fcard{min-height:230px;background:var(--panel);border:2px solid var(--line);box-shadow:4px 4px 0 var(--shadow);padding:20px;display:flex;flex-direction:column;justify-content:center;gap:14px;cursor:pointer;touch-action:pan-y;transition:transform .12s}
+.fcard .side{font-family:var(--pix);font-size:8px;color:var(--muted)}
+.fcard .q{font-size:20px;line-height:1.45}
+.fcard .a{font-size:18px;line-height:1.5;border-top:2px dashed var(--line);padding-top:14px}
+.fcard .a p{margin:0 0 8px}
+.rate{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.rate .btn{flex-direction:column;gap:5px;padding:10px 4px}
+.rate .btn small{font-family:var(--body);font-size:12px;opacity:.85}
+.rate .again{background:var(--bad-soft);color:var(--ink)}.rate .hard{background:var(--warn-soft);color:var(--ink)}.rate .easy{background:var(--ok-soft);color:var(--ink)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.stat{border:2px solid var(--line);background:var(--panel);padding:10px}
+.stat b{display:block;font-family:var(--pix);font-size:14px;line-height:1.5}
+.stat span{font-size:13.5px;color:var(--muted)}
+.term{padding:12px 0;border-top:2px dashed color-mix(in srgb,var(--line) 40%,transparent)}
+.term:first-child{border-top:0}
+.term b{font-family:var(--mono);font-size:15px}
+.term .meta{font-size:13.5px;color:var(--muted)}
+.term p{margin:4px 0}
+.arch{border:2px solid var(--line);background:var(--panel);padding:12px 14px;margin:0 0 12px;box-shadow:3px 3px 0 var(--shadow)}
+.arch .yr{font-family:var(--pix);font-size:10px}
+.arch p{margin:0 0 8px}
+.arch .src{font-size:13px;color:var(--muted);margin-top:6px}
+.cab{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.cab .it{border:2px solid var(--line);background:var(--panel);padding:8px;text-align:center;font-size:13px}
+.cab .it.off{border-style:dashed;opacity:.6}
+.cab .it svg{width:48px;height:48px;image-rendering:pixelated;display:block;margin:0 auto 6px}
+pre.json{margin:10px 0;padding:10px;background:var(--code-bg);color:var(--code-ink);font-family:var(--mono);font-size:12.5px;max-height:240px;overflow:auto;border:2px solid var(--line)}
+.field{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0}
+.field label{min-width:170px}
+.search,.namebox{background:var(--bg);border:2px solid var(--line);padding:8px 10px;min-height:44px;width:100%}
+.field input[type=range]{flex:1;min-width:160px;accent-color:var(--accent)}
+.field output{font-family:var(--pix);font-size:11px;min-width:40px}
+.seg{display:inline-flex;border:2px solid var(--line);flex-wrap:wrap}
+.seg button{font-family:var(--pix);font-size:9px;padding:10px 12px;background:var(--panel);border:0;border-right:2px solid var(--line);cursor:pointer;min-height:42px}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+textarea.paste{width:100%;min-height:90px;font-family:var(--mono);font-size:12.5px;background:var(--bg);border:2px solid var(--line);padding:8px}
+.empty{padding:26px 16px;text-align:center}
+.timer{font-family:var(--pix);font-size:12px}
+#toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:40;display:flex;flex-direction:column;gap:8px;width:min(92vw,420px);pointer-events:none}
+@media (min-width:900px){#toasts{bottom:24px}}
+.toast{pointer-events:auto;background:var(--accent);color:var(--accent-ink);border:2px solid var(--line);box-shadow:3px 3px 0 var(--shadow);padding:10px 12px;font-size:14.5px;line-height:1.45}
+.toast b{font-family:var(--pix);font-size:8px;display:block;margin-bottom:3px}
+#modal{position:fixed;inset:0;z-index:60;background:rgba(8,14,4,.62);display:flex;align-items:center;justify-content:center;padding:20px}
+.dlg{background:var(--panel);border:2px solid var(--line);box-shadow:6px 6px 0 var(--shadow);max-width:440px;width:100%;padding:18px;max-height:90vh;overflow:auto}
+.dlg h2{font-family:var(--pix);font-size:12px;line-height:1.7;margin-bottom:10px}
+.dlg .row{justify-content:flex-end;margin-top:16px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="app" id="app">
+  <header class="top">
+    <a class="brand" href="#home" aria-label="Lime home"><span id="logo"></span><span>LIME</span></a>
+    <div class="chips" id="chips"></div>
+  </header>
+  <nav class="nav" id="nav" aria-label="Main"></nav>
+  <main id="view"></main>
+</div>
+<div id="toasts" aria-live="polite"></div>
+<div id="modal" hidden></div>
+
+<script>
+(function(){
+'use strict';
+var CONTENT = /*__CONTENT__*/null;
+var RUNNER_SRC = /*__RUNNER__*/null;
+var APP = {id:'lime', title:'Lime', icon:'🍋‍🟩', color:'#8BD122', version:'2.1.0'};
+var BRYTHON_BASE = window.__LIME_BRYTHON_BASE || 'https://cdn.jsdelivr.net/npm/brython@3.14.3/';
+
+/* ================= helpers ================= */
+function h(tag, attrs){
+  var el = document.createElement(tag);
+  if (attrs) for (var k in attrs){
+    var v = attrs[k];
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k.slice(0,2) === 'on') el.addEventListener(k.slice(2), v);
+    else if (k === 'text') el.textContent = v;
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (var i = 2; i < arguments.length; i++) add(el, arguments[i]);
+  return el;
+}
+function add(el, kid){
+  if (kid == null || kid === false) return;
+  if (Array.isArray(kid)) { kid.forEach(function(x){ add(el, x); }); return; }
+  el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+}
+function addAll(el){ for (var i = 1; i < arguments.length; i++) add(el, arguments[i]); return el; }
+function fill(el){ el.replaceChildren(); for (var i = 1; i < arguments.length; i++) add(el, arguments[i]); return el; }
+function $(sel, root){ return (root || document).querySelector(sel); }
+function pad(n){ return (n < 10 ? '0' : '') + n; }
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+function keyOf(d){ d = d || new Date(); return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+function dayNum(d){ d = d || new Date(); return Math.floor((d.getTime() - d.getTimezoneOffset()*60000) / 86400000); }
+function fmtDate(key){ var p = key.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+function fmtDateTime(ms){ var d = new Date(ms); return pad(d.getDate()) + '/' + pad(d.getMonth()+1) + '/' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+function shuffle(a){ for (var i = a.length-1; i > 0; i--){ var j = Math.floor(Math.random()*(i+1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+function pick(a){ return a[Math.floor(Math.random() * a.length)]; }
+function canon(v){ if (Array.isArray(v)) return v.map(canon); if (v && typeof v === 'object'){ var o = {}; Object.keys(v).sort().forEach(function(k){ o[k] = canon(v[k]); }); return o; } return v; }
+function same(a, b){ return JSON.stringify(canon(a)) === JSON.stringify(canon(b)); }
+var LS = {
+  get: function(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set: function(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
+};
+
+/* pixel art */
+var NS = 'http://www.w3.org/2000/svg';
+function svgEl(w, hgt, size, label){
+  var svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 ' + w + ' ' + hgt);
+  svg.setAttribute('shape-rendering', 'crispEdges');
+  if (size){ svg.setAttribute('width', size); svg.setAttribute('height', Math.round(size * hgt / w)); }
+  if (label){ svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', label); } else svg.setAttribute('aria-hidden', 'true');
+  return svg;
+}
+function rect(svg, x, y, w, hh, fill){
+  var r = document.createElementNS(NS, 'rect');
+  r.setAttribute('x', x); r.setAttribute('y', y); r.setAttribute('width', w); r.setAttribute('height', hh); r.setAttribute('fill', fill);
+  svg.appendChild(r); return r;
+}
+function pix(rows, colors, size, label){
+  var svg = svgEl(rows[0].length, rows.length, size, label);
+  rows.forEach(function(row, y){ for (var x = 0; x < row.length; x++){ var c = colors[row[x]]; if (c) rect(svg, x, y, 1, 1, c); } });
+  return svg;
+}
+var LIME_ART = ['......ss....','.....ssl....','...ggggggg..','..gGGGGGGGg.','.gGGGwGGGGGg','.gGGwGGGGGGg','.gGGGGGGGGGg','.gGGGGGGGGGg','..gGGGGGGGg.','...gGGGGGg..','....ggggg...','............'];
+var LIME_COL = {g:'#4E8F12', G:'#8BD122', w:'#EAF9BA', s:'#7A5B2E', l:'#5DAA1A'};
+var GEAR = ['..1..1..','.111111.','.11..11.','111..111','111..111','.11..11.','.111111.','..1..1..'];
+var ICONS = {
+  home: ['...11...','..1111..','.111111.','11111111','.1....1.','.1.11.1.','.1.11.1.','.111111.'],
+  map:  ['11.111.1','1.11.111','111.11.1','1.111.11','11.1.111','1.111.11','111.11.1','11.111.1'],
+  cards:['........','.111111.','1......1','1.1111.1','1......1','1.11...1','1......1','.111111.'],
+  index:['11111111','1.1.1.11','11111111','1......1','1.1111.1','1......1','1.111..1','11111111'],
+  bench:['........','11....11','.11..11.','..1111..','...11...','..1111..','.11..11.','11....11']
+};
+function icon(name, size){ return pix(ICONS[name], {1:'currentColor'}, size || 22); }
+function gear(size, color){ return pix(GEAR, {1: color || 'currentColor'}, size || 16); }
+
+/* inline formatting: `code`, **bold**, *italic* */
+function fmt(text){
+  var frag = document.createDocumentFragment();
+  String(text).split(/(`[^`]*`)/).forEach(function(p){
+    if (p.length >= 2 && p[0] === '`' && p[p.length-1] === '`'){ frag.append(h('code', null, p.slice(1, -1))); return; }
+    var re = /(\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/g, last = 0, m;
+    while ((m = re.exec(p))){
+      if (m.index > last) frag.append(p.slice(last, m.index));
+      var t = m[0];
+      frag.append(t.slice(0,2) === '**' ? h('strong', null, t.slice(2, -2)) : h('em', null, t.slice(1, -1)));
+      last = m.index + t.length;
+    }
+    if (last < p.length) frag.append(p.slice(last));
+  });
+  return frag;
+}
+function paras(text){
+  return String(text).split(/\n\s*\n/).map(function(chunk){
+    var lines = chunk.split('\n').filter(function(l){ return l.trim(); });
+    if (lines.length && lines.every(function(l){ return /^\s*- /.test(l); }))
+      return h('ul', null, lines.map(function(l){ return h('li', null, fmt(l.replace(/^\s*- /, ''))); }));
+    return h('p', null, fmt(chunk.replace(/\n/g, ' ')));
+  });
+}
+/* text with ``` fenced code: runnable cells in scenes, plain blocks elsewhere */
+function rich(text, runnable){
+  var wrap = h('div', {class:'rich'});
+  String(text).split(/```[a-z]*\n?([\s\S]*?)```/).forEach(function(part, i){
+    if (i % 2 === 1){
+      var lines = part.replace(/\s+$/, '').split('\n'), ind = Math.min.apply(null, lines.filter(function(l){ return l.trim(); }).map(function(l){ return l.match(/^ */)[0].length; }));
+      var src = lines.map(function(l){ return l.slice(ind); }).join('\n');
+      wrap.append(runnable ? codeCell(src) : h('pre', {class:'src'}, src));
+    }
+    else if (part.trim()) paras(part.trim()).forEach(function(n){ wrap.append(n); });
+  });
+  return wrap;
+}
+
+/* ================= content ================= */
+var TRACKS = CONTENT.tracks;
+var TBY = {}; TRACKS.forEach(function(t, i){ t.idx = i; TBY[t.id] = t; });
+var LESSONS = CONTENT.lessons.slice().sort(function(a, b){ return a.track === b.track ? a.n - b.n : TBY[a.track].idx - TBY[b.track].idx; });
+var LBY = {}; LESSONS.forEach(function(L){ LBY[L.id] = L; });
+var CITY = CONTENT.city || {};
+var DIST = CONTENT.districts || {};
+function lessonsOf(tid){ return LESSONS.filter(function(L){ return L.track === tid; }); }
+var EMPTY_CITY = {jobs:[], read:[], parsons:[], terms:[], teach:null, opener:'', scene:''};
+function cityOf(L){ return CITY[L.id] || EMPTY_CITY; }
+var TERMS = [];
+LESSONS.forEach(function(L){ cityOf(L).terms.forEach(function(t, i){ TERMS.push(Object.assign({id:L.id + ':t' + i, lesson:L}, t)); }); });
+
+/* ================= state ================= */
+function blank(){
+  return {v:2, epoch:0, updatedAt:0, done:{}, pred:{}, read:{}, cards:{}, days:{}, teach:{}, notes:{}, redo:{}, exam:{}, seen:{}, snip:{},
+    set:{theme:'auto', newPerDay:8, maxReviews:60, goalXp:40, showXp:false, cityMode:false, sound:false, appUrl:''}};
+}
+function normalise(o){
+  var b = blank(); var set = Object.assign(b.set, (o && o.set) || {}); var s = Object.assign(b, o || {}); s.set = set;
+  ['done','pred','read','cards','days','teach','notes','redo','exam','seen','snip'].forEach(function(k){ if (!s[k] || typeof s[k] !== 'object') s[k] = {}; });
+  return s;
+}
+function load(){
+  try { var raw = LS.get('lime.v1'); if (raw) return normalise(JSON.parse(raw)); } catch(e){}
+  return blank();
+}
+var S = load();
+var drafts = {}; try { drafts = JSON.parse(LS.get('lime.drafts') || '{}') || {}; } catch(e){}
+var draftTimer = null;
+function setDraft(k, v){ drafts[k] = v; clearTimeout(draftTimer); draftTimer = setTimeout(function(){ LS.set('lime.drafts', JSON.stringify(drafts)); }, 600); }
+function persistLocal(){ LS.set('lime.v1', JSON.stringify(S)); }
+function save(){ S.updatedAt = Date.now(); persistLocal(); queueSync(); }
+function applyTheme(){ var r = document.documentElement; if (S.set.theme === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', S.set.theme); }
+function setAccent(tid){
+  var t = TBY[tid] || TBY.py, r = document.documentElement.style;
+  r.setProperty('--accent', t.accent); r.setProperty('--accent-ink', t.ink);
+}
+
+function mergeState(a, b){
+  if (!b || typeof b !== 'object') return a;
+  b = normalise(b);
+  if ((b.epoch || 0) < (a.epoch || 0)) return a;
+  if ((b.epoch || 0) > (a.epoch || 0)) { var nb = normalise(b); nb.set = a.set; return nb; }
+  var out = normalise(JSON.parse(JSON.stringify(a))), k;
+  function tOf(x){ return x && typeof x === 'object' ? (x.t || 0) : (x || 0); }
+  ['done', 'redo', 'seen', 'read'].forEach(function(f){
+    for (k in b[f]){ var x = out[f][k], y = b[f][k]; if (!x || (f === 'redo' ? tOf(y) > tOf(x) : tOf(y) < tOf(x))) out[f][k] = y; }
+  });
+  for (k in b.pred){ var p = out.pred[k], q = b.pred[k]; if (!p || (q.ok && !p.ok) || (q.ok === p.ok && (q.t || 0) < (p.t || 0))) out.pred[k] = q; }
+  for (k in b.cards){ var c = out.cards[k], d = b.cards[k]; if (!c || (d.last || 0) > (c.last || 0)) out.cards[k] = d; }
+  ['teach', 'notes', 'snip'].forEach(function(f){ for (k in b[f]){ var c2 = out[f][k], d2 = b[f][k]; if (!c2 || (d2.t || 0) > (c2.t || 0)) out[f][k] = d2; } });
+  for (k in b.exam){ var e = out.exam[k], f2 = b.exam[k]; out.exam[k] = !e ? f2 : {best:Math.max(e.best || 0, f2.best || 0), t:Math.max(e.t || 0, f2.t || 0), n:Math.max(e.n || 0, f2.n || 0)}; }
+  for (k in b.days){
+    var x2 = out.days[k] || (out.days[k] = {}), y2 = b.days[k];
+    ['xp','ex','pred','cards','newc','jobs'].forEach(function(f){ x2[f] = Math.max(x2[f] || 0, y2[f] || 0); });
+  }
+  out.updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0);
+  return out;
+}
+
+/* ================= progress ================= */
+function K(L, kind, id){ return L.id + ':' + kind + ':' + id; }
+function lp(L){
+  var c = cityOf(L), got = 0, tot = 0, ex = 0, pr = 0, jb = 0, jbN = 0;
+  L.exercises.forEach(function(e){ tot++; if (S.done[L.id + ':' + e.id]){ got++; ex++; } });
+  L.predict.forEach(function(p, i){ tot++; if (S.pred[L.id + ':p' + i]){ got++; pr++; } });
+  c.jobs.forEach(function(j){ tot++; jbN++; if (S.done[K(L, 'job', j.id)]){ got++; jb++; } });
+  c.parsons.forEach(function(p){ tot++; jbN++; if (S.done[K(L, 'par', p.id)]){ got++; jb++; } });
+  c.read.forEach(function(r){ tot++; jbN++; if (S.pred[K(L, 'read', r.id)]){ got++; jb++; } });
+  var taught = !!(S.teach[L.id] && S.teach[L.id].self);
+  if (c.teach){ tot++; if (taught) got++; }
+  return {ex:ex, exN:L.exercises.length, pr:pr, prN:L.predict.length, jb:jb, jbN:jbN, taught:taught,
+    got:got, tot:tot, pct: tot ? got / tot : 0, started:!!S.read[L.id], done: tot > 0 && got === tot};
+}
+var UNLOCK = 0.6;
+function unlocked(L){
+  var ls = lessonsOf(L.track), i = ls.indexOf(L);
+  if (i > 0) return lp(ls[i - 1]).pct >= UNLOCK;
+  var t = TBY[L.track];
+  if (t.idx === 0) return true;
+  var prev = TRACKS[t.idx - 1];
+  return trackRestored(prev.id) || lessonsOf(prev.id).length === 0;
+}
+function trackReady(tid){ var ls = lessonsOf(tid); return ls.length > 0 && ls.every(function(L){ return lp(L).pct >= UNLOCK; }); }
+function examPassed(tid){ return ((S.exam[tid] || {}).best || 0) >= 0.75; }
+function trackRestored(tid){ var D = DIST[tid]; return !!(D && S.done[tid + ':project:' + D.project.id] && examPassed(tid)); }
+function trackPct(tid){ var ls = lessonsOf(tid); if (!ls.length) return 0; var s = 0; ls.forEach(function(L){ s += lp(L).pct; }); return s / ls.length; }
+function nextLesson(){ for (var i = 0; i < LESSONS.length; i++){ var L = LESSONS[i]; if (!lp(L).done && unlocked(L)) return L; } return null; }
+
+/* XP is kept quietly for the hub; shown only if turned on */
+function totalXp(){ var n = 0; for (var k in S.days) n += S.days[k].xp || 0; return n; }
+function levelOf(xp){ return 1 + Math.floor(Math.sqrt(xp / 40)); }
+function todayXp(){ return (S.days[keyOf()] || {}).xp || 0; }
+function dayRec(){ var k = keyOf(); return S.days[k] || (S.days[k] = {xp:0, ex:0, pred:0, cards:0, newc:0, jobs:0}); }
+function calcStreak(){
+  var n = 0, d = new Date();
+  if (!((S.days[keyOf(d)] || {}).xp > 0)) d.setDate(d.getDate() - 1);
+  while ((S.days[keyOf(d)] || {}).xp > 0){ n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+function award(n, field){ var d = dayRec(); d.xp += n; if (field) d[field] = (d[field] || 0) + 1; save(); chrome(); }
+
+/* ================= spaced repetition ================= */
+function schedule(st, rating, t){
+  var s = st ? Object.assign({}, st) : {ease:2.5, ivl:0, reps:0, lapses:0};
+  if (!st){ s.ivl = [0, 1, 2, 5][rating]; }
+  else if (rating === 0){ s.lapses++; s.ease = Math.max(1.3, s.ease - 0.2); s.ivl = 1; }
+  else if (rating === 1){ s.ivl = Math.max(s.ivl + 1, Math.round(s.ivl * 1.2)); s.ease = Math.max(1.3, s.ease - 0.15); }
+  else if (rating === 2){ s.ivl = Math.max(s.ivl + 1, Math.round(s.ivl * s.ease)); }
+  else { s.ivl = Math.max(s.ivl + 2, Math.round(s.ivl * s.ease * 1.3)); s.ease += 0.15; }
+  s.reps++; s.due = t + s.ivl; s.last = Date.now();
+  return s;
+}
+function ivlLabel(st, rating){
+  if (rating === 0) return 'again';
+  var n = schedule(st, rating, 0).ivl;
+  return n < 30 ? n + 'd' : n < 365 ? Math.round(n/30) + 'mo' : (n/365).toFixed(1) + 'y';
+}
+function cardList(){
+  var out = [];
+  LESSONS.forEach(function(L){
+    if (!S.read[L.id]) return;
+    L.cards.forEach(function(c, i){ var id = L.id + ':c' + i; out.push({id:id, lesson:L, f:c.f, b:c.b, st:S.cards[id]}); });
+    cityOf(L).terms.forEach(function(t, i){
+      var id = L.id + ':t' + i;
+      out.push({id:id, lesson:L, f:'In Python, what is meant by **' + t.term + '**?', b:t.def + (t.ex ? '\n\nExample: ' + t.ex : ''), st:S.cards[id], term:true});
+    });
+  });
+  return out;
+}
+function newAvail(list){
+  var cap = Math.max(0, (S.set.newPerDay || 0) - ((S.days[keyOf()] || {}).newc || 0));
+  return Math.min(cap, list.filter(function(c){ return !c.st; }).length);
+}
+function dueCards(){ var t = dayNum(); return cardList().filter(function(c){ return c.st && c.st.due <= t; }); }
+function dueToday(){ return Math.min(dueCards().length, S.set.maxReviews); }
+function dueTotal(){ return dueToday() + newAvail(cardList()); }
+
+/* ================= sound (generated, off by default) ================= */
+var Snd = {ctx:null, tick:null,
+  ok:function(){ if (!S.set.sound) return null; try { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); if (this.ctx.state === 'suspended') this.ctx.resume(); return this.ctx; } catch(e){ return null; } },
+  blip:function(freqs, dur, type){
+    var c = this.ok(); if (!c) return;
+    var t = c.currentTime;
+    freqs.forEach(function(f, i){
+      var o = c.createOscillator(), g = c.createGain();
+      o.type = type || 'square'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t + i * dur); g.gain.exponentialRampToValueAtTime(0.05, t + i * dur + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + (i + 1) * dur);
+      o.connect(g); g.connect(c.destination); o.start(t + i * dur); o.stop(t + (i + 1) * dur + 0.02);
+    });
+  },
+  right:function(){ this.blip([660, 990], 0.08); },
+  wrong:function(){ this.blip([220, 165], 0.1, 'triangle'); },
+  done:function(){ this.blip([523, 659, 784, 1047], 0.09); },
+  ambience:function(on){
+    var self = this;
+    if (self.tick){ clearInterval(self.tick); self.tick = null; }
+    if (!on || !S.set.sound) return;
+    self.tick = setInterval(function(){ if (document.visibilityState !== 'visible') return; var c = self.ok(); if (!c) return; var t = c.currentTime, o = c.createOscillator(), g = c.createGain(); o.type = 'square'; o.frequency.value = 1800; g.gain.setValueAtTime(0.01, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.03); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 0.04); }, 1000);
+  }
+};
+
+/* ================= NIT ================= */
+var NIT_LINES = {
+  right:['Correct. I will allow a moment of satisfaction. Moment over.','Correct. I checked twice. I always check twice.','Accepted. The machine agrees with you, which is rare and should be enjoyed.'],
+  rightFirst:['First try. I have noted it in ink, not pencil.','Correct on the first attempt. Do not let it go to your head. Let it go to your long-term memory.'],
+  tries:['It took a few attempts. All were instructive. Mostly to me.','Solved. The failed attempts were rehearsals, which is what failed attempts are for.'],
+  wrong:['Not quite. "Almost" is not a data type. Read the first failing check: it names the case that broke.','Not yet. Run it yourself with the failing input and print the result: evidence beats guessing.','Close. Close is a distance, and this one is measurable. Look at the check that failed.'],
+  lesson:['Lesson complete. One more window in Calx is lit.','Complete. The Quarter is slightly louder now, in a good way.'],
+  welcome:['You are early by local standards. Every standard here is local.','Welcome back. Nothing broke while you were away. Things merely waited.','Good. I was waiting. I am very good at waiting. It is my only feature.'],
+  gap:['You were away. Nothing broke. Here is a small pile, cut down to size.'],
+  parsonsWrong:['The order is wrong somewhere. Python reads top to bottom, and so must you.','Not that order. Ask of each line: what must already exist for it to work?'],
+  teach:['Explaining is the hardest test. If you can say it plainly, you know it.']
+};
+function nitLine(kind){ return pick(NIT_LINES[kind] || NIT_LINES.right); }
+function nitBox(text, label){ return h('div', {class:'nit'}, gear(16), h('div', null, h('b', null, label || 'NIT'), fmt(text))); }
+var ERRS = {
+  SyntaxError:'Python could not read this line, so nothing ran. Look for a missing colon at the end of an if, for, while or def line, an unclosed bracket or quote, or `=` where `==` was meant. The real mistake is often on the line before.',
+  IndentationError:'The spaces at the start of the lines do not line up. Every line in a block needs the same indent (4 spaces), and a line ending with `:` must be followed by an indented line.',
+  NameError:'Python met a name it does not know. Check the spelling and capitals, check it was assigned before this line, and check that text has quotes around it.',
+  TypeError:'An operation got the wrong type of value: adding text to a number, calling something that is not a function, or giving a function the wrong number of arguments. Print `type(x)` to see what you really have.',
+  ValueError:'The type was right but the value was unusable, such as `int("seven")`, or unpacking a different number of items than names.',
+  ZeroDivisionError:'Something was divided by zero (or used with `%` by zero). Find which divisor can be 0 and deal with that case first.',
+  IndexError:'A position past the end of a list or string. The last valid index is `len(x) - 1`. Check loop ranges for an off-by-one.',
+  KeyError:'A dictionary was asked for a key it does not have. Use `d.get(key, default)`, or check `key in d` first.',
+  AttributeError:'This value has no method or attribute with that name. Check the spelling and the type: a list has `append`, a string does not.',
+  RecursionError:'A function called itself too many times. Check that the base case is reached and that every call moves toward it.',
+  UnboundLocalError:'This name is assigned somewhere in the function, so Python treats it as local, but it was used before that assignment.',
+  AssertionError:'An `assert` found its condition false. Read the condition: it states what the code expected to be true.',
+  RuntimeError:'Something went wrong while running. Read the message after the colon.'
+};
+function explainBox(err){
+  if (!err) return null;
+  var m = /^(\w+)/.exec(err), name = m ? m[1] : '';
+  var text = ERRS[name] || 'Read the last line of the error: it names what went wrong, and the line number shows where.';
+  if (/loop ran for too long/.test(err)) text = 'Lime stopped a loop that kept running. A `while` condition never became false: something inside the loop must change it.';
+  if (/could not start/.test(err)) return null;
+  var line = /\(line (\d+)\)/.exec(err);
+  return h('div', {class:'explain'}, h('b', null, 'NIT EXPLAINS ' + (name || 'THE ERROR').toUpperCase()), fmt(text + (line ? ' Start at line ' + line[1] + '.' : '')));
+}
+
+/* ================= toasts, dialogs ================= */
+function toast(msg, label){
+  var el = h('div', {class:'toast', role:'status'}, label ? h('b', null, label) : null, fmt(msg));
+  var tb = $('#toasts'); tb.append(el); while (tb.children.length > 2) tb.firstChild.remove();
+  setTimeout(function(){ el.remove(); }, 3600);
+}
+function ask(opts){
+  return new Promise(function(resolve){
+    var m = $('#modal'), prev = document.activeElement;
+    function close(v){ m.hidden = true; m.replaceChildren(); document.removeEventListener('keydown', onKey); if (prev && prev.focus) prev.focus(); resolve(v); }
+    function onKey(e){ if (e.key === 'Escape') close(false); }
+    var ok = h('button', {class:'btn ' + (opts.danger ? 'danger' : ''), onclick:function(){ close(true); }}, opts.ok || 'OK');
+    var no = opts.cancel === false ? null : h('button', {class:'btn ghost', onclick:function(){ close(false); }}, opts.cancel || 'Cancel');
+    fill(m, h('div', {class:'dlg', role:'dialog', 'aria-modal':'true', 'aria-label':opts.title},
+      h('h2', null, opts.title), h('div', null, typeof opts.text === 'string' ? h('p', null, opts.text) : opts.text),
+      h('div', {class:'row'}, no, ok)));
+    m.hidden = false; document.addEventListener('keydown', onKey); (no || ok).focus();
+  });
+}
+function copyText(text){
+  function fallback(){
+    var ta = h('textarea', {class:'paste', readonly:true}); ta.value = text;
+    ask({title:'Copy', text:h('div', null, h('p', null, 'Select the text and copy it.'), ta), ok:'Done', cancel:false}); setTimeout(function(){ ta.select(); }, 50);
+  }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function(){ toast('Copied.'); }, fallback);
+    else fallback();
+  } catch(e){ fallback(); }
+}
+
+/* ================= Python engine (Brython) ================= */
+function loadScript(src, ms){
+  return new Promise(function(resolve, reject){
+    var s = document.createElement('script'), done = false;
+    var timer = setTimeout(function(){ if (!done){ done = true; reject(new Error('Timed out loading ' + src)); } }, ms || 60000);
+    s.src = src; s.async = true;
+    s.onload = function(){ if (!done){ done = true; clearTimeout(timer); resolve(); } };
+    s.onerror = function(){ if (!done){ done = true; clearTimeout(timer); reject(new Error('Could not load ' + src)); } };
+    document.head.appendChild(s);
+  });
+}
+var Py = {
+  state:'idle', p:null, err:'',
+  load:function(){
+    var self = this;
+    if (self.p) return self.p;
+    self.state = 'loading';
+    self.p = (async function(){
+      await loadScript(BRYTHON_BASE + 'brython.min.js');
+      await loadScript(BRYTHON_BASE + 'brython_stdlib.js');
+      window.brython({indexedDB:false});
+      window.__BRYTHON__.runPythonSource(RUNNER_SRC, {id:'runner'});
+      for (var i = 0; i < 200 && !window.pyReady; i++) await sleep(50);
+      if (!window.pyReady) throw new Error('The Python runner did not start.');
+      self.state = 'ready';
+    })().catch(function(e){ self.state = 'error'; self.err = String((e && e.message) || e); self.p = null; throw e; });
+    return self.p;
+  },
+  run:async function(code, tests){ await this.load(); await sleep(20); return JSON.parse(window.pyRun(code, tests || '')); }
+};
+function setOut(el, r, explainHost){
+  el.hidden = false; el.replaceChildren();
+  if (explainHost) explainHost.replaceChildren();
+  if (typeof r === 'string'){ el.append(h('span', {class:'dim'}, r)); return; }
+  if (r.out) el.append(r.out);
+  if (r.error){ el.append(h('span', {class:'err'}, r.error)); if (explainHost) add(explainHost, explainBox(r.error)); }
+  if (!r.out && !r.error) el.append(h('span', {class:'dim'}, '(no output)'));
+}
+async function runInto(code, tests, outEl, btn, explainHost){
+  if (btn) btn.disabled = true;
+  setOut(outEl, Py.state === 'ready' ? 'Running...' : 'Starting Python. The first run downloads the engine...', explainHost);
+  var r;
+  try { r = await Py.run(code, tests); }
+  catch(e){ setOut(outEl, {out:'', error:'Python could not start in this view. ' + Py.err}); if (btn) btn.disabled = false; return null; }
+  setOut(outEl, r, explainHost);
+  if (btn) btn.disabled = false;
+  return r;
+}
+
+/* ================= editor ================= */
+function editor(o){
+  var ta = h('textarea', {class:'ta', spellcheck:'false', autocapitalize:'off', autocomplete:'off', autocorrect:'off', 'aria-label':o.label || 'Python code'});
+  ta.value = o.value;
+  function fit(){ ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight + 2, o.max || 560) + 'px'; }
+  function insert(txt){ var s = ta.selectionStart, e = ta.selectionEnd; ta.setRangeText(txt, s, e, 'end'); ta.dispatchEvent(new Event('input')); }
+  function dedent(){
+    var v = ta.value, s = ta.selectionStart, ls = v.lastIndexOf('\n', s - 1) + 1;
+    if (v.slice(ls, ls + 4) === '    '){ ta.setRangeText('', ls, ls + 4, 'preserve'); ta.selectionStart = ta.selectionEnd = Math.max(ls, s - 4); ta.dispatchEvent(new Event('input')); }
+  }
+  ta.addEventListener('input', function(){ fit(); if (o.onInput) o.onInput(ta.value); });
+  ta.addEventListener('focus', function(){ Py.load().catch(function(){}); }, {once:true});
+  ta.addEventListener('keydown', function(e){
+    if (e.key === 'Tab' && !e.shiftKey){ e.preventDefault(); insert('    '); }
+    else if (e.key === 'Tab' && e.shiftKey){ e.preventDefault(); dedent(); }
+    else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter'){ e.preventDefault(); if (o.onRun) o.onRun(); }
+    else if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.isComposing){
+      e.preventDefault();
+      var v2 = ta.value, s2 = ta.selectionStart, ls2 = v2.lastIndexOf('\n', s2 - 1) + 1, line = v2.slice(ls2, s2);
+      var ind = (line.match(/^[ \t]*/) || [''])[0];
+      if (/:\s*(#.*)?$/.test(line)) ind += '    ';
+      insert('\n' + ind);
+    }
+  });
+  var keys = h('div', {class:'keys'}, ['Tab', 'Untab', ':', '(', ')', '[', ']', '{', '}', '"', "'", '=', '_', ',', '.', '#', '+', '-', '*', '/', '%', '<', '>'].map(function(k){
+    return h('button', {type:'button', 'aria-label':k === 'Tab' ? 'Indent' : k === 'Untab' ? 'Remove indent' : 'Insert ' + k,
+      onpointerdown:function(e){ e.preventDefault(); },
+      onclick:function(){ ta.focus(); if (k === 'Tab') insert('    '); else if (k === 'Untab') dedent(); else insert(k); }}, k === 'Untab' ? '⇤' : k === 'Tab' ? '⇥' : k);
+  }));
+  var el = h('div', {class:'ed'}, ta, keys);
+  requestAnimationFrame(fit); setTimeout(fit, 120);
+  return {el:el, ta:ta, fit:fit, get value(){ return ta.value; }, set value(v){ ta.value = v; fit(); if (o.onInput) o.onInput(v); }};
+}
+var benchRef = null;
+function sendToBench(src){ setDraft('__bench', src); if (benchRef) benchRef.load(src); toast('Sent to the workbench.'); }
+function codeCell(src){
+  var out = h('pre', {class:'out', hidden:true, 'aria-live':'polite'}), exp = h('div');
+  var ed = editor({value:src, label:'Example code', onRun:function(){ run.click(); }});
+  var run = h('button', {class:'btn small', onclick:function(){ runInto(ed.value, '', out, run, exp); }}, 'RUN');
+  var reset = h('button', {class:'btn small ghost', onclick:function(){ ed.value = src; out.hidden = true; exp.replaceChildren(); }}, 'RESET');
+  var tb = h('button', {class:'btn small ghost tobench', onclick:function(){ sendToBench(ed.value); }}, 'TO BENCH');
+  return h('div', {class:'cell'}, ed.el, h('div', {class:'bar2'}, run, reset, h('span', {class:'sp'}), tb), out, exp);
+}
+
+/* ================= lesson blocks ================= */
+var NOTE_LABEL = {model:'MENTAL MODEL', trap:'WATCH OUT', tip:'TIP'};
+function renderBlocks(L){
+  var wrap = h('div', {class:'prose'});
+  L.blocks.forEach(function(b){
+    if (b.t === 'h') wrap.append(h('h3', null, b.x));
+    else if (b.t === 'p') paras(b.x).forEach(function(n){ wrap.append(n); });
+    else if (b.t === 'code') wrap.append(codeCell(b.x));
+    else if (b.t === 'note') wrap.append(h('div', {class:'note ' + b.k}, h('span', {class:'nl'}, NOTE_LABEL[b.k]), paras(b.x)));
+  });
+  return wrap;
+}
+
+/* ================= exercise (core, city job, quest, project, re-do) ================= */
+function exercise(ex, opts){
+  var key = opts.key, dk = opts.draftKey || key;
+  var attempts = 0, hinted = false, peeked = false, level = 0;
+  var rec = opts.solvedRec;
+  var out = h('pre', {class:'out', hidden:true, 'aria-live':'polite'}), exp = h('div');
+  var res = h('ul', {class:'res', hidden:true});
+  var roleTag = {story:'STORY JOB', repair:'REPAIR JOB', quest:'SIDE QUEST', project:'BOSS PROJECT'}[ex.role] || (ex.kind === 'fix' ? 'FIX IT' : 'WRITE IT');
+  var status = h('span', {class:'tag' + (rec ? ' live' : '')}, rec ? 'SOLVED' : (opts.label || roleTag));
+  var winBox = h('div', {class:'win', hidden:!rec});
+  if (rec) winBox.append(h('b', null, 'SOLVED'), rec.n ? (rec.n === 1 ? 'First try.' : rec.n + ' tries.') : '');
+  var start = (!opts.fresh && drafts[dk] != null) ? drafts[dk] : ex.starter;
+  var chk, runBtn;
+  var ed = editor({value:start, label:'Your code for ' + ex.title, onInput:function(v){ setDraft(dk, v); }, onRun:function(){ chk.click(); }});
+  var hintBox = h('div', {class:'box', hidden:true}, h('strong', null, 'Hint: '), fmt(ex.hint));
+  var partBox = h('div', {class:'box sol', hidden:true});
+  var solBox = h('div', {class:'box sol', hidden:true});
+  async function check(){
+    chk.disabled = runBtn.disabled = true; attempts++;
+    setOut(out, Py.state === 'ready' ? 'Checking...' : 'Starting Python. The first run downloads the engine...', exp);
+    var r;
+    try { r = await Py.run(ed.value, ex.tests); }
+    catch(e){ setOut(out, {out:'', error:'Python could not start in this view. ' + Py.err}); chk.disabled = runBtn.disabled = false; return; }
+    chk.disabled = runBtn.disabled = false;
+    if (r.out || r.error) setOut(out, r, exp); else { out.hidden = true; exp.replaceChildren(); }
+    res.replaceChildren();
+    if (r.error){ res.hidden = true; Snd.wrong(); return; }
+    res.hidden = false;
+    var all = r.results.length > 0;
+    r.results.forEach(function(x){
+      if (!x.ok) all = false;
+      res.append(h('li', {class:x.ok ? 'ok' : 'no'}, h('span', {class:'m'}, x.ok ? 'OK' : 'NO'),
+        h('span', null, x.label, (!x.ok && (x.hint || x.detail)) ? h('span', {class:'why'}, [x.hint, x.detail].filter(Boolean).join(' ')) : null)));
+    });
+    if (all) solved(); else { Snd.wrong(); res.append(h('li', null, nitBox(nitLine('wrong')))); }
+  }
+  function solved(){
+    Snd.right();
+    var r2 = opts.onSolve ? opts.onSolve(attempts, peeked || level >= 2, hinted) : null;
+    rec = r2 || rec || {n:attempts};
+    status.textContent = 'SOLVED'; status.classList.add('live');
+    winBox.hidden = false; fill(winBox, h('b', null, 'SOLVED'), nitLine(attempts === 1 && !hinted ? 'rightFirst' : attempts > 3 ? 'tries' : 'right'));
+  }
+  runBtn = h('button', {class:'btn small ghost', onclick:function(){ runInto(ed.value, '', out, runBtn, exp); res.hidden = true; }}, 'RUN');
+  chk = h('button', {class:'btn small', onclick:check}, 'CHECK');
+  /* help ladder: hint (hold to peek, tap to keep) -> first lines -> full solution */
+  var t0 = 0, open = false;
+  function setHint(v){ open = v; hintBox.hidden = !v; hintBtn.setAttribute('aria-expanded', String(v)); if (v){ hinted = true; level = Math.max(level, 1); more.disabled = false; } }
+  var hintBtn = h('button', {class:'btn small warn', 'aria-expanded':'false', title:'Hold to peek, tap to keep open',
+    onpointerdown:function(){ t0 = Date.now(); hintBox.hidden = false; hinted = true; level = Math.max(level, 1); more.disabled = false; },
+    onpointerup:function(){ if (Date.now() - t0 > 350) hintBox.hidden = !open; else setHint(!open); },
+    onpointerleave:function(){ hintBox.hidden = !open; },
+    onkeydown:function(e){ if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); setHint(!open); } }}, 'HINT');
+  var more = h('button', {class:'btn small ghost', disabled:true, title:'Shows the first lines of a solution', onclick:function(){
+    level = Math.max(level, 2);
+    var lines = ex.solution.replace(/\s+$/, '').split('\n'), n = Math.max(1, Math.ceil(lines.length / 3));
+    partBox.hidden = false;
+    fill(partBox, h('strong', null, 'The first ' + n + ' of ' + lines.length + ' lines of one solution'), h('pre', null, lines.slice(0, n).join('\n')), h('p', {class:'sub', style:'margin:6px 0 0'}, 'Type them yourself rather than pasting: the typing is part of the learning.'));
+  }}, 'FIRST LINES');
+  var solBtn = h('button', {class:'btn small ghost', onclick:async function(){
+    if (solBox.hidden){
+      var yes = await ask({title:'Show the solution?', text:'You learn far more from the struggle than from reading an answer. If you look, this one comes back in a few days as a blank-page re-do.', ok:'Show it'});
+      if (!yes) return;
+      peeked = true; level = 3; solBox.hidden = false;
+      fill(solBox, h('strong', null, 'One solution'), h('pre', null, ex.solution), h('p', {class:'sub', style:'margin:6px 0 0'}, 'Read it line by line, then close it and write it yourself.'));
+    } else solBox.hidden = true;
+  }}, 'SOLUTION');
+  var resetBtn = h('button', {class:'btn small ghost', onclick:async function(){
+    var yes = await ask({title:'Reset your code?', text:'This puts the starting code back and discards your edits.', ok:'Reset', danger:true});
+    if (yes){ ed.value = ex.starter; out.hidden = true; res.hidden = true; exp.replaceChildren(); }
+  }}, 'RESET');
+  return h('div', {class:'ex', id:'ex-' + key.replace(/[^a-z0-9]/gi, '-')},
+    h('div', {class:'hd'}, h('b', null, ex.title), status),
+    h('div', {class:'pr'}, rich(ex.prompt, false)),
+    ed.el,
+    h('div', {class:'bar2'}, chk, runBtn, hintBtn, more, solBtn, h('span', {class:'sp'}), resetBtn),
+    hintBox, partBox, solBox, out, exp, res, winBox);
+}
+function coreExercise(L, ex){
+  var key = L.id + ':' + ex.id;
+  return exercise(ex, {key:key, solvedRec:S.done[key], onSolve:function(n, peeked, hinted){
+    if (!S.done[key]){ S.done[key] = {t:Date.now(), n:n, peek:peeked ? 1 : 0}; award(peeked ? 5 : 20 + (n === 1 && !hinted ? 10 : 0), 'ex'); afterProgress(L); }
+    return S.done[key];
+  }});
+}
+function jobExercise(L, ex){
+  var key = K(L, 'job', ex.id);
+  return exercise(ex, {key:key, solvedRec:S.done[key], onSolve:function(n, peeked){
+    if (!S.done[key]){ S.done[key] = {t:Date.now(), n:n, peek:peeked ? 1 : 0}; award(peeked ? 5 : 25, 'jobs'); afterProgress(L); }
+    return S.done[key];
+  }});
+}
+
+/* predict the output (core predictions and read-the-machine) */
+function normOut(s){ return String(s).replace(/\r/g, '').split('\n').map(function(l){ return l.replace(/\s+$/, ''); }).join('\n').trim(); }
+function predict(p, key, L, title){
+  var ta = h('textarea', {rows:3, spellcheck:'false', autocapitalize:'off', 'aria-label':'What does this print?', placeholder:'Type exactly what is printed, one line per printed line.'});
+  var fb = h('div', {class:'fb', hidden:true});
+  var tries = 0;
+  function show(ok, revealed){
+    fb.hidden = false; fb.className = 'fb ' + (ok ? 'ok' : 'no');
+    fill(fb, 
+      h('strong', null, ok ? 'Correct.' : revealed ? 'The output is:' : 'Not quite.'),
+      (ok || revealed) ? h('pre', null, p.ans) : null,
+      (ok || revealed) ? h('p', null, fmt(p.why)) : h('p', null, 'Trace it line by line: write down each name and its value as it changes. Then try again.'));
+  }
+  var chk = h('button', {class:'btn small', onclick:function(){
+    if (!ta.value.trim()) return;
+    tries++;
+    var ok = normOut(ta.value) === normOut(p.ans);
+    if (ok){
+      Snd.right();
+      if (!S.pred[key] || !S.pred[key].ok){
+        var first = !S.pred[key];
+        S.pred[key] = {ok:true, t:Date.now(), n:tries};
+        if (first) award(5, 'pred'); else save();
+        if (L) afterProgress(L);
+      }
+    } else Snd.wrong();
+    show(ok, false);
+  }}, 'CHECK');
+  var rev = h('button', {class:'btn small ghost', onclick:function(){
+    if (!S.pred[key]){ S.pred[key] = {ok:false, revealed:true, t:Date.now()}; save(); if (L) afterProgress(L); }
+    show(false, true);
+  }}, 'SHOW ANSWER');
+  var out = h('pre', {class:'out', hidden:true});
+  var runIt = h('button', {class:'btn small ghost', onclick:function(){ runInto(p.code, '', out, runIt); }}, 'RUN IT');
+  var cur = S.pred[key];
+  if (cur) show(cur.ok, !cur.ok);
+  return h('div', {class:'pred'}, title ? h('div', {class:'hd'}, title) : null, h('pre', {class:'src'}, p.code),
+    h('div', {class:'in'}, ta, h('div', {class:'row', style:'margin-top:8px'}, chk, rev, runIt)), out, fb);
+}
+
+/* Parsons: tap lines into order; checked by running the assembled program */
+function parsons(L, pz){
+  var key = K(L, 'par', pz.id);
+  var pool = shuffle(pz.lines.concat(pz.distractors).map(function(t, i){ return {t:t, id:i}; }));
+  var ans = [];
+  var poolEl = h('div', {class:'zone'}), ansEl = h('div', {class:'zone ans'});
+  var out = h('pre', {class:'out', hidden:true}), exp = h('div'), res = h('ul', {class:'res', hidden:true});
+  var status = h('span', {class:'tag' + (S.done[key] ? ' live' : '')}, S.done[key] ? 'SOLVED' : 'ORDER IT');
+  function lineBtn(item, inAns, idx){
+    return h('button', {class:'ln', type:'button', 'aria-label':(inAns ? 'Remove line: ' : 'Add line: ') + item.t.trim(), onclick:function(){
+      if (inAns){ ans.splice(idx, 1); pool.push(item); } else { pool.splice(pool.indexOf(item), 1); ans.push(item); }
+      draw();
+    }}, inAns ? h('span', {class:'n'}, (idx < 9 ? ' ' : '') + (idx + 1)) : null, item.t.replace(/^ +/, function(m){ return m.replace(/ /g, '·'); }));
+  }
+  function draw(){
+    fill(poolEl, h('span', {class:'zl'}, pool.length ? 'TAP A LINE TO ADD IT' : 'ALL LINES USED'), pool.map(function(it){ return lineBtn(it, false); }));
+    fill(ansEl, h('span', {class:'zl'}, ans.length ? 'YOUR PROGRAM (TAP A LINE TO SEND IT BACK)' : 'YOUR PROGRAM'), ans.map(function(it, i){ return lineBtn(it, true, i); }));
+  }
+  draw();
+  var chk = h('button', {class:'btn small', onclick:async function(){
+    if (!ans.length) return;
+    var code = ans.map(function(a){ return a.t; }).join('\n') + '\n';
+    chk.disabled = true;
+    var r;
+    try { r = await Py.run(code, pz.tests); } catch(e){ setOut(out, {out:'', error:'Python could not start in this view. ' + Py.err}); chk.disabled = false; return; }
+    chk.disabled = false;
+    if (r.out || r.error) setOut(out, r, exp); else { out.hidden = true; exp.replaceChildren(); }
+    res.hidden = false; res.replaceChildren();
+    var all = !r.error && r.results.length > 0 && r.results.every(function(x){ return x.ok; });
+    if (!r.error) r.results.forEach(function(x){ res.append(h('li', {class:x.ok ? 'ok' : 'no'}, h('span', {class:'m'}, x.ok ? 'OK' : 'NO'), h('span', null, x.label, !x.ok && x.hint ? h('span', {class:'why'}, x.hint) : null))); });
+    if (all){
+      Snd.right(); status.textContent = 'SOLVED'; status.classList.add('live');
+      res.append(h('li', null, nitBox(nitLine('right'))));
+      if (!S.done[key]){ S.done[key] = {t:Date.now(), n:1}; award(10, 'jobs'); afterProgress(L); }
+    } else { Snd.wrong(); res.append(h('li', null, nitBox(nitLine('parsonsWrong')))); }
+  }}, 'CHECK ORDER');
+  var clr = h('button', {class:'btn small ghost', onclick:function(){ pool = shuffle(pool.concat(ans)); ans = []; draw(); out.hidden = true; res.hidden = true; exp.replaceChildren(); }}, 'CLEAR');
+  return h('div', {class:'pz'}, h('div', {class:'hd'}, h('span', null, pz.title.toUpperCase()), status),
+    h('div', {class:'zone', style:'padding-bottom:0'}, rich(pz.prompt, false), pz.distractors.length ? h('p', {class:'sub', style:'margin:0'}, 'Dots show indentation. Leave out ' + (pz.distractors.length === 1 ? 'the decoy line.' : 'the ' + pz.distractors.length + ' decoy lines.')) : null),
+    poolEl, ansEl, h('div', {class:'bar2'}, chk, clr), out, exp, res);
+}
+
+/* Teach-back: explain, compare with a model answer, rate yourself honestly */
+function teachBack(L){
+  var c = cityOf(L), t = c.teach; if (!t) return null;
+  var rec = S.teach[L.id] || {};
+  var ta = h('textarea', {'aria-label':'Your explanation', placeholder:'Write it as if explaining to someone who missed the lesson. Plain words, one example.'});
+  ta.value = rec.text || '';
+  var cnt = h('span', {class:'sub'});
+  var model = h('div', {class:'note model', hidden:!rec.shown}, h('span', {class:'nl'}, 'A MODEL ANSWER'), paras(t.model));
+  var rateRow = h('div', {class:'row', hidden:!rec.shown || !!rec.self, style:'margin-top:10px'});
+  var doneMsg = h('p', {class:'sub', hidden:!rec.self}, rec.self ? 'Rated: ' + ({full:'I covered it all', part:'partly', miss:'I missed key points'}[rec.self]) + '. You can rewrite and compare again any time.' : '');
+  function words(){ return ta.value.trim().split(/\s+/).filter(Boolean).length; }
+  var cmp = h('button', {class:'btn small', onclick:function(){
+    model.hidden = false; rateRow.hidden = false; doneMsg.hidden = true;
+    var r = S.teach[L.id] || {}; r.text = ta.value; r.shown = 1; r.t = Date.now(); S.teach[L.id] = r; save();
+  }}, 'COMPARE WITH A MODEL');
+  function upd(){ var n = words(); cnt.textContent = n + ' words' + (n < 25 ? ' (write at least 25 to compare)' : ''); cmp.disabled = n < 25; }
+  ta.addEventListener('input', function(){ upd(); var r = S.teach[L.id] || {}; r.text = ta.value; r.t = Date.now(); S.teach[L.id] = r; clearTimeout(ta._t); ta._t = setTimeout(save, 800); });
+  [['full', 'I COVERED IT ALL'], ['part', 'PARTLY'], ['miss', 'I MISSED KEY POINTS']].forEach(function(x){
+    rateRow.append(h('button', {class:'btn small ghost', onclick:function(){
+      var r = S.teach[L.id] || {}; var first = !r.self; r.self = x[0]; r.t = Date.now(); S.teach[L.id] = r;
+      if (first) award(15, 'jobs'); else save();
+      rateRow.hidden = true; doneMsg.hidden = false;
+      doneMsg.textContent = 'Rated: ' + x[1].toLowerCase() + '. ' + (x[0] === 'full' ? 'Good.' : 'Reread the model, then rewrite yours in your own words. That rewrite is where the learning happens.');
+      afterProgress(L);
+    }}, x[1]));
+  });
+  upd();
+  return h('div', {class:'teach'}, nitBox(nitLine('teach')), h('p', null, h('strong', null, 'Explain it: '), fmt(t.prompt)), ta,
+    h('div', {class:'row', style:'margin-top:8px'}, cmp, cnt), model, rateRow, doneMsg);
+}
+
+/* ================= scenes ================= */
+function sceneArt(tid){
+  var W = 96, H = 40, t = TBY[tid] || TBY.py, svg = svgEl(W, H, null, '');
+  rect(svg, 0, 0, W, H, '#101a0a');
+  for (var i = 0; i < 22; i++) rect(svg, (i * 37) % W, (i * 11) % 14, 1, 1, '#4a5a3a');
+  var x = 2, seed = tid.length * 7;
+  while (x < W - 4){
+    var bw = 6 + ((seed * 13 + x) % 8), bh = 10 + ((seed * 7 + x * 3) % 20);
+    rect(svg, x, H - bh, bw, bh, t.accent); rect(svg, x, H - bh, bw, 1, '#17230E');
+    for (var yy = H - bh + 3; yy < H - 2; yy += 3) for (var xx = x + 1; xx < x + bw - 1; xx += 2) rect(svg, xx, yy, 1, 1, ((xx + yy + seed) % 3) ? '#1d2a14' : '#FFD75E');
+    x += bw + 1; seed += 3;
+  }
+  var cx = Math.floor(W / 2);
+  rect(svg, cx - 3, 4, 6, H - 4, '#C9C2A6'); rect(svg, cx - 4, 3, 8, 1, '#8E8770'); rect(svg, cx - 2, 6, 4, 4, '#F2EBD0'); rect(svg, cx, 7, 1, 2, '#17230E'); rect(svg, cx, 8, 2, 1, '#17230E');
+  return svg;
+}
+function sceneView(tid, screens, opts){
+  var i = 0, body = h('div', {class:'body'}), counter = h('span', {class:'sub'});
+  var prev = h('button', {class:'btn small ghost', onclick:function(){ if (i > 0){ i--; draw(); } }}, '< BACK');
+  var next = h('button', {class:'btn small', onclick:function(){ if (i < screens.length - 1){ i++; draw(); } else if (opts.onDone) opts.onDone(); }}, 'NEXT >');
+  function draw(){
+    fill(body, rich(screens[i], true));
+    counter.textContent = (i + 1) + ' / ' + screens.length;
+    prev.disabled = i === 0; next.textContent = i === screens.length - 1 ? (opts.doneLabel || 'DONE') : 'NEXT >';
+  }
+  draw();
+  return h('div', {class:'scene'}, h('div', {class:'art'}, sceneArt(tid)), body,
+    h('div', {class:'foot'}, prev, counter, h('span', {class:'sp'}), opts.skip ? h('button', {class:'btn small ghost', onclick:opts.skip}, 'SKIP') : null, next));
+}
+
+/* ================= lesson page ================= */
+var headRefs = null;
+function refreshHead(L){
+  if (!headRefs || headRefs.L !== L) return;
+  var p = lp(L);
+  headRefs.core.textContent = 'CORE ' + (p.ex + p.pr) + '/' + (p.exN + p.prN); headRefs.coreBar.style.width = (100 * (p.ex + p.pr) / Math.max(1, p.exN + p.prN)) + '%';
+  headRefs.city.textContent = 'CITY ' + (p.jb + (p.taught ? 1 : 0)) + '/' + (p.jbN + (cityOf(L).teach ? 1 : 0)); headRefs.cityBar.style.width = (100 * (p.jb + (p.taught ? 1 : 0)) / Math.max(1, p.jbN + (cityOf(L).teach ? 1 : 0))) + '%';
+  headRefs.all.textContent = p.done ? 'LESSON COMPLETE' : 'ALL ' + Math.round(100 * p.pct) + '%' + (p.pct < UNLOCK ? ' (60% OPENS NEXT)' : '');
+  headRefs.allBar.style.width = (100 * p.pct) + '%';
+}
+function afterProgress(L){
+  var p = lp(L);
+  if (p.done && !S.read[L.id + ':done']){ S.read[L.id + ':done'] = Date.now(); award(30, null); Snd.done(); toast(nitLine('lesson'), 'LESSON COMPLETE'); }
+  else if (p.pct >= UNLOCK && !S.read[L.id + ':open']){
+    S.read[L.id + ':open'] = Date.now(); save();
+    var ls = lessonsOf(L.track), nx = ls[ls.indexOf(L) + 1];
+    toast(nx ? 'Lesson ' + nx.n + ', "' + nx.title + '", is now open.' : 'The district exam and boss project are open.', 'UNLOCKED');
+  }
+  refreshHead(L); chrome();
+}
+function lockedView(L){
+  var ls = lessonsOf(L.track), prev = ls[ls.indexOf(L) - 1];
+  return h('div', {class:'card empty'}, h('h1', {class:'title'}, 'LOCKED'),
+    h('p', null, prev ? 'Lesson ' + L.n + ' opens when lesson ' + prev.n + ', "' + prev.title + '", is at least 60% done. It is at ' + Math.round(100 * lp(prev).pct) + '%.' : 'This district opens when the previous one is restored.'),
+    nitBox('Order matters. Each lesson uses the tools from the one before it.'),
+    prev ? h('a', {class:'btn', href:'#lesson-' + prev.id}, 'GO TO LESSON ' + prev.n) : h('a', {class:'btn', href:'#map'}, 'THE MAP'));
+}
+function termRow(t){
+  return h('div', {class:'term'}, h('b', null, t.term), t.lesson ? h('span', {class:'meta'}, '  · lesson ' + t.lesson.n) : null,
+    h('p', null, fmt(t.def)), t.ex ? h('p', {class:'meta'}, 'Example: ', fmt(t.ex)) : null, t.mistake ? h('p', {class:'meta'}, 'Common mistake: ', fmt(t.mistake)) : null);
+}
+function lessonView(L){
+  if (!unlocked(L)) return lockedView(L);
+  var c = cityOf(L), first = !S.read[L.id];
+  if (first){ S.read[L.id] = Date.now(); save(); toast((L.cards.length + c.terms.length) + ' flashcards join your reviews.', 'NEW CARDS'); }
+  var track = TBY[L.track];
+  var coreBar = h('i'), cityBar = h('i'), allBar = h('i'), core = h('div'), city = h('div'), all = h('div');
+  headRefs = {L:L, core:core, coreBar:coreBar, city:city, cityBar:cityBar, all:all, allBar:allBar};
+  var head = h('div', {class:'card'},
+    h('a', {class:'crumb', href:'#d-' + track.id}, '< ' + track.district.toUpperCase()),
+    h('h1', {class:'title'}, L.n + '. ' + L.title),
+    h('div', {class:'sub'}, '~' + (L.minutes + 35) + ' min including city jobs. ' + L.summary),
+    c.opener ? nitBox(c.opener) : null,
+    h('ul', {class:'goals'}, L.goals.map(function(g){ return h('li', null, g); })),
+    h('div', {class:'pstrip'}, h('div', null, core, h('div', {class:'bar'}, coreBar)), h('div', null, city, h('div', {class:'bar'}, cityBar)), h('div', null, all, h('div', {class:'bar'}, allBar))));
+  var sceneBox = null;
+  if (c.scene){
+    sceneBox = h('details', {class:'scene'}, h('summary', null, 'THE STORY: ' + (S.seen[L.id + ':scene'] ? 'READ AGAIN' : 'START HERE')),
+      h('div', {class:'art'}, sceneArt(L.track)), h('div', {class:'body'}, rich(c.scene, false)));
+    if (!S.seen[L.id + ':scene']) sceneBox.open = true;
+    sceneBox.addEventListener('toggle', function(){ if (!S.seen[L.id + ':scene']){ S.seen[L.id + ':scene'] = Date.now(); save(); } });
+  }
+  var notes = h('textarea', {class:'paste', style:'font-family:var(--body);font-size:15px', 'aria-label':'Your notes on this lesson', placeholder:'Your own notes for this lesson. Saved and synced with your progress.'});
+  notes.value = (S.notes[L.id] || {}).text || '';
+  notes.addEventListener('input', function(){ S.notes[L.id] = {text:notes.value, t:Date.now()}; clearTimeout(notes._t); notes._t = setTimeout(save, 800); });
+  var n = 0;
+  function sec(t){ n++; return h('h2', {class:'sec'}, n + '. ' + t); }
+  var main = h('div', {style:'min-width:0'}, head, sceneBox,
+    sec('LEARN'), renderBlocks(L),
+    sec('PREDICT THE OUTPUT'),
+    h('p', {class:'sub'}, 'Work out what each program prints before running anything. Guess, then check: that is how an accurate mental model gets built.'),
+    L.predict.map(function(q, i){ return predict(q, L.id + ':p' + i, L); }));
+  if (c.parsons.length) addAll(main, sec('PUT IT IN ORDER'), h('p', {class:'sub'}, 'A warm-up for writing: every right line is here, plus decoys. Building the order teaches what depends on what.'), c.parsons.map(function(pz){ return parsons(L, pz); }));
+  addAll(main, sec('PRACTICE'), h('p', {class:'sub'}, 'CHECK runs tests on your code. Hold HINT to peek, tap it to keep it open. FIRST LINES and SOLUTION are for when you are truly stuck. Ctrl+Enter also checks.'),
+    L.exercises.map(function(e){ return coreExercise(L, e); }));
+  if (c.jobs.length || c.read.length) addAll(main, sec('CITY JOBS'),
+    h('p', {class:'sub'}, 'The same ideas on the city\'s real problems: read a Founders\' program, do a job for a resident, then make a repair.'),
+    c.read.map(function(r){ return predict(r, K(L, 'read', r.id), L, 'READ THE MACHINE: ' + r.title.toUpperCase()); }),
+    c.jobs.map(function(j){ return jobExercise(L, j); }));
+  if (c.teach) addAll(main, sec('EXPLAIN IT'), teachBack(L));
+  if (c.terms.length) addAll(main, h('h2', {class:'sec'}, 'FILED IN NIT\'S INDEX'), h('div', {class:'card tight'}, c.terms.map(function(t){ return termRow(t); })));
+  addAll(main, h('h2', {class:'sec'}, 'MY NOTES'), notes);
+  var ls = lessonsOf(L.track), idx = ls.indexOf(L), nx = ls[idx + 1], pv = ls[idx - 1];
+  addAll(main, h('div', {class:'row', style:'margin:26px 0'},
+    pv ? h('a', {class:'btn ghost', href:'#lesson-' + pv.id}, '< ' + pv.n + '. ' + pv.title) : null,
+    nx ? h('a', {class:'btn', href:'#lesson-' + nx.id}, nx.n + '. ' + nx.title + ' >') : h('a', {class:'btn', href:'#d-' + L.track}, 'TO THE DISTRICT >')));
+  setTimeout(function(){ refreshHead(L); }, 0);
+  return h('div', {class:'lgrid'}, main, h('aside', {class:'aside', 'aria-label':'Workbench'}, benchPanel(true)));
+}
+
+/* ================= workbench ================= */
+function benchPanel(compact){
+  var out = h('pre', {class:'out', hidden:true}), exp = h('div'), run;
+  var ed = editor({value:drafts.__bench != null ? drafts.__bench : '# The workbench: try anything here.\nprint("Hello from the bench")\n', label:'Workbench code', max:compact ? 420 : 640,
+    onInput:function(v){ setDraft('__bench', v); }, onRun:function(){ run.click(); }});
+  run = h('button', {class:'btn small', onclick:function(){ runInto(ed.value, '', out, run, exp); }}, 'RUN');
+  var name = h('input', {type:'text', class:'namebox', 'aria-label':'Name for this snippet', placeholder:'Name to save as', style:'flex:1;min-width:120px;width:auto'});
+  var saveBtn = h('button', {class:'btn small ghost', onclick:function(){
+    var nm = name.value.trim(); if (!nm){ name.focus(); return; }
+    var id = nm.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40) || ('s' + Date.now());
+    S.snip[id] = {name:nm, code:ed.value, t:Date.now()}; save(); name.value = ''; toast('Saved "' + nm + '".'); drawList();
+  }}, 'SAVE');
+  var list = h('div');
+  function drawList(){
+    var ids = Object.keys(S.snip).filter(function(k){ return S.snip[k] && !S.snip[k].gone; }).sort(function(a, b){ return S.snip[b].t - S.snip[a].t; });
+    fill(list, ids.length ? h('div', {class:'sub', style:'margin:12px 0 6px'}, 'Saved snippets') : null, ids.map(function(id){
+      var s = S.snip[id];
+      return h('div', {class:'mission'}, h('div', {class:'t'}, h('b', null, s.name), h('span', {class:'sub'}, fmtDateTime(s.t))),
+        h('button', {class:'btn small ghost', onclick:function(){ ed.value = s.code; toast('Opened "' + s.name + '".'); }}, 'OPEN'),
+        h('button', {class:'btn small danger', 'aria-label':'Delete ' + s.name, onclick:async function(){
+          if (await ask({title:'Delete snippet?', text:'"' + s.name + '" will be removed from all your devices.', ok:'Delete', danger:true})){ S.snip[id] = {gone:1, t:Date.now()}; save(); drawList(); }
+        }}, 'DEL'));
+    }));
+  }
+  drawList();
+  benchRef = {load:function(src){ ed.value = src; }};
+  return h('div', null, h('div', {class:'card tight', style:'margin-bottom:10px'}, h('b', {class:'h-pix', style:'font-size:10px'}, 'WORKBENCH'),
+      h('p', {class:'sub', style:'margin:4px 0 0'}, compact ? 'Try ideas while you read. TO BENCH on any example copies it here.' : 'A free editor for experiments. Save what works: snippets sync with your progress.')),
+    h('div', {class:'cell'}, ed.el, h('div', {class:'bar2'}, run, h('span', {class:'sp'}), h('button', {class:'btn small ghost', onclick:function(){ ed.value = ''; out.hidden = true; exp.replaceChildren(); }}, 'CLEAR')), out, exp),
+    h('div', {class:'row'}, name, saveBtn), list);
+}
+
+/* ================= router and views ================= */
+var route = {name:'home', arg:null};
+var R = null;
+var EXAM = null;
+function parseRoute(){
+  var hsh = decodeURIComponent((location.hash || '#home').slice(1));
+  var pre = [['lesson-', 'lesson', LBY], ['d-', 'district', TBY], ['exam-', 'exam', DIST], ['story-', 'story', DIST], ['ending-', 'ending', DIST], ['archive-', 'archive', DIST]];
+  for (var i = 0; i < pre.length; i++){ var p = pre[i]; if (hsh.indexOf(p[0]) === 0 && p[2][hsh.slice(p[0].length)]) return {name:p[1], arg:hsh.slice(p[0].length)}; }
+  return {name:['home', 'map', 'cards', 'index', 'bench', 'me', 'redo'].indexOf(hsh) >= 0 ? hsh : 'home', arg:null};
+}
+function chrome(){
+  var chips = $('#chips'); chips.replaceChildren();
+  if (S.set.showXp){
+    var xp = totalXp();
+    chips.append(h('span', {class:'chip hot'}, 'LV ' + levelOf(xp)), h('span', {class:'chip'}, xp + ' XP'), h('span', {class:'chip'}, 'STREAK ' + calcStreak()));
+  }
+  if (FROM_CITRUS) chips.append(h('a', {class:'chip', href:CITRUS_URL + '?from=lime', 'aria-label':'Back to Citrus Maxima'}, '\u2190 CITRUS'));
+  if (LS.get('lime.gconn') === '1' && !G.unavailable) chips.append(h('button', {class:'chip', type:'button', 'aria-label':gValid() ? 'Sync with Google Drive now' : 'Google sign-in expired: tap to reconnect', title:G.lastErr || (G.last ? 'Last sync ' + fmtDateTime(G.last) : ''), onclick:function(){ syncAll(true); }}, syncing ? 'SYNCING' : gValid() ? (G.lastErr ? 'SYNC !' : 'SYNC') : 'TAP TO SYNC'));
+  chips.append(h('a', {class:'chip' + (route.name === 'me' ? ' hot' : ''), href:'#me', 'aria-label':'Me: progress and settings'}, 'ME'));
+  var due = dueTotal();
+  var nav = $('#nav'); nav.replaceChildren();
+  [['home', 'HOME'], ['map', 'MAP'], ['cards', 'CARDS'], ['index', 'INDEX'], ['bench', 'BENCH']].forEach(function(n){
+    var a = h('a', {href:'#' + n[0]}, icon(n[0]), h('span', null, n[1]));
+    var cur = route.name === n[0] || (n[0] === 'map' && /^(lesson|district|exam|story|ending|archive)$/.test(route.name)) || (n[0] === 'home' && route.name === 'redo');
+    if (cur) a.setAttribute('aria-current', 'page');
+    if (n[0] === 'cards' && due > 0) a.append(h('span', {class:'badge'}, due > 99 ? '99+' : due));
+    nav.append(a);
+  });
+}
+function rerender(){
+  var trk = route.name === 'lesson' ? LBY[route.arg].track : (route.arg && TBY[route.arg] ? route.arg : 'py');
+  setAccent(trk);
+  $('#app').classList.toggle('split', route.name === 'lesson');
+  fill($('#view'), buildView()); chrome();
+}
+function rerenderSoft(){ if (route.name === 'lesson' || route.name === 'exam' || route.name === 'redo' || route.name === 'bench' || route.name === 'district'){ chrome(); if (headRefs) refreshHead(headRefs.L); } else rerender(); }
+function buildView(){
+  headRefs = null; benchRef = null;
+  switch (route.name){
+    case 'lesson': return lessonView(LBY[route.arg]);
+    case 'map': return mapView();
+    case 'district': return districtView(route.arg);
+    case 'story': return storyView(route.arg, false);
+    case 'ending': return storyView(route.arg, true);
+    case 'archive': return archiveView(route.arg);
+    case 'exam': return examView(route.arg);
+    case 'cards': return cardsView();
+    case 'index': return indexView();
+    case 'bench': return h('div', null, h('h1', {class:'title'}, 'WORKBENCH'), benchPanel(false));
+    case 'me': return meView();
+    case 'redo': return redoView();
+  }
+  return homeView();
+}
+
+/* ---- re-do: retrieval practice on an old exercise from a blank page ---- */
+function redoPick(){
+  var now = Date.now(), best = null;
+  LESSONS.forEach(function(L){
+    var c = cityOf(L);
+    L.exercises.map(function(e){ return {L:L, ex:e, key:L.id + ':' + e.id}; }).concat(c.jobs.map(function(j){ return {L:L, ex:j, key:K(L, 'job', j.id)}; })).forEach(function(it){
+      var d = S.done[it.key]; if (!d) return;
+      var r = S.redo[it.key];
+      var last = Math.max(d.t || 0, (r && r.t) || 0);
+      var need = (r && !r.skip ? 7 : 3) * 86400000;
+      if (now - last < need) return;
+      var score = (now - last) + (d.peek ? 5 * 86400000 : 0) + ((d.n || 1) - 1) * 86400000;
+      if (!best || score > best.score) best = Object.assign({score:score}, it);
+    });
+  });
+  return best;
+}
+function redoView(){
+  var it = redoPick();
+  var name = S.set.cityMode ? 'ODD JOB' : 'RE-DO';
+  if (!it) return h('div', {class:'card empty'}, h('h1', {class:'title'}, name), h('p', null, 'Nothing to re-do yet. Solved exercises come back here 3 days later, then a week after each re-do. Solving again from a blank page is one of the strongest ways to make knowledge stick.'), h('a', {class:'btn', href:'#home'}, 'HOME'));
+  return h('div', null, h('h1', {class:'title'}, name + ' FROM A BLANK PAGE'),
+    nitBox('From lesson ' + it.L.n + ', "' + it.L.title + '". You solved this before. Solve it again without looking back: remembering is the exercise.'),
+    exercise(it.ex, {key:'redo:' + it.key, draftKey:'redo:' + it.key, fresh:true, label:name, onSolve:function(n){
+      S.redo[it.key] = {t:Date.now(), n:n}; award(15, 'ex'); toast('It comes back in a week or more.', 'RE-DONE'); return {t:Date.now(), n:n};
+    }}),
+    h('div', {class:'row'}, h('a', {class:'btn ghost', href:'#lesson-' + it.L.id}, 'OPEN THE LESSON'), h('button', {class:'btn ghost', onclick:function(){ S.redo[it.key] = {t:Date.now(), skip:1}; save(); rerender(); }}, 'NOT TODAY')));
+}
+
+function homeView(){
+  var nl = nextLesson(), due = dueToday(), dueAll = dueCards().length, nw = newAvail(cardList()), wrap = h('div', null);
+  var d = S.days[keyOf()] || {};
+  var last = Object.keys(S.days).filter(function(k){ return k < keyOf() && S.days[k].xp > 0; }).sort().pop();
+  var gap = last ? Math.round((new Date(keyOf()) - new Date(last)) / 86400000) : 0;
+  wrap.append(h('div', {class:'card'},
+    h('h1', {class:'title'}, 'TODAY ' + fmtDate(keyOf())),
+    nitBox(gap >= 3 ? nitLine('gap') : nitLine('welcome')),
+    h('div', {class:'sub'}, ((d.ex || 0) + (d.jobs || 0)) + ' exercises and jobs, ' + (d.pred || 0) + ' predictions and ' + (d.cards || 0) + ' card reviews today.'),
+    S.set.showXp ? [h('div', {class:'sub', style:'margin-top:8px'}, 'Daily goal: ' + Math.min(todayXp(), S.set.goalXp) + ' of ' + S.set.goalXp + ' XP'), h('div', {class:'bar', style:'margin-top:6px'}, h('i', {style:'width:' + Math.min(100, 100 * todayXp() / S.set.goalXp) + '%'}))] : null));
+  var m = h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'WHAT TO DO NEXT'));
+  var nlp = nl ? lp(nl) : null;
+  m.append(h('div', {class:'mission'}, h('span', {class:'tick' + (!nl ? ' on' : nlp.started ? ' part' : '')}, !nl ? 'OK' : ''),
+    h('div', {class:'t'}, h('b', null, nl ? (nlp.started ? 'Continue: ' : 'Start: ') + nl.n + '. ' + nl.title : 'Every open lesson is complete'),
+      h('span', {class:'sub'}, nl ? TBY[nl.track].district + ' · ' + Math.round(100 * nlp.pct) + '% done' : 'Try the district exam, the side quests, or your reviews.')),
+    nl ? h('a', {class:'btn small', href:'#lesson-' + nl.id}, nlp.started ? 'CONTINUE' : 'START') : h('a', {class:'btn small', href:'#d-py'}, 'DISTRICT')));
+  m.append(h('div', {class:'mission'}, h('span', {class:'tick' + ((due + nw) === 0 && cardList().length ? ' on' : '')}, (due + nw) === 0 && cardList().length ? 'OK' : ''),
+    h('div', {class:'t'}, h('b', null, (due + nw) ? 'Review ' + due + ' due and ' + nw + ' new cards' : cardList().length ? 'All cards reviewed' : 'No cards yet'),
+      h('span', {class:'sub'}, dueAll > due ? dueAll + ' are waiting; today is capped at ' + S.set.maxReviews + ' so the pile stays manageable. The rest come in the next days.' : cardList().length ? 'Short, spaced reviews beat long cramming.' : 'Open a lesson and its cards join your reviews.')),
+    (due + nw) ? h('a', {class:'btn small', href:'#cards'}, 'REVIEW') : null));
+  var rd = redoPick();
+  m.append(h('div', {class:'mission'}, h('span', {class:'tick' + (rd ? '' : ' on')}, rd ? '' : 'OK'),
+    h('div', {class:'t'}, h('b', null, rd ? (S.set.cityMode ? 'Odd job: ' : 'Re-do: ') + rd.ex.title : 'No re-dos waiting'),
+      h('span', {class:'sub'}, rd ? 'Solved ' + Math.max(1, Math.round((Date.now() - (S.done[rd.key].t || 0)) / 86400000)) + ' days ago. Solve it again from a blank page.' : 'Solved exercises come back here after 3 days for a blank-page re-do.')),
+    rd ? h('a', {class:'btn small ghost', href:'#redo'}, 'RE-DO') : null));
+  wrap.append(m);
+  var plan = (G.plan || []).filter(function(p){ return p.date >= keyOf(); }).slice(0, 4);
+  if (plan.length) wrap.append(h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'PLANNED IN CITRUS'),
+    plan.map(function(p){ return h('div', {class:'mission'}, h('div', {class:'t'}, h('b', null, fmtDate(p.date) + ' ' + p.start + ' to ' + p.end), h('span', {class:'sub'}, p.title + (p.status === 'accepted' ? ' (on your calendar)' : ' (suggested)')))); })));
+  var restored = TRACKS.filter(function(t){ return trackRestored(t.id); }).length;
+  wrap.append(h('a', {class:'card', href:'#map', style:'display:block;text-decoration:none'}, h('h2', {class:'h-pix'}, 'CALX, THE CLOCKWORK CITY'),
+    h('div', {class:'art', style:'border:2px solid var(--line);margin-bottom:10px'}, sceneArt('py')),
+    h('p', {class:'sub', style:'margin:0'}, restored + ' of ' + TRACKS.length + ' districts restored. The Workshop Quarter is ' + Math.round(100 * trackPct('py')) + '% lit. Open the map.')));
+  return wrap;
+}
+
+function building(t, lit, total, locked){
+  var W = 24, H = 22, svg = svgEl(W, H, null, '');
+  rect(svg, 0, 0, W, H, '#101a0a');
+  rect(svg, 1, 1, 1, 1, '#4a5a3a'); rect(svg, 20, 2, 1, 1, '#4a5a3a');
+  var body = t.accent;
+  rect(svg, 3, 6, 18, 16, body);
+  for (var i = 0; i < 6; i++) rect(svg, 3 + i * 1, 6 - i, 18 - i * 2, 1, '#17230E');
+  var n = Math.max(total, 4);
+  for (var k = 0; k < Math.min(n, 12); k++){
+    var cx = 5 + (k % 4) * 4, cy = 8 + Math.floor(k / 4) * 3;
+    rect(svg, cx, cy, 2, 2, k < lit ? '#FFD75E' : (k < total ? '#17230E' : (locked ? '#333b2c' : '#4b5a3c')));
+  }
+  rect(svg, 10, 18, 4, 4, '#17230E');
+  if (locked){ var veil = rect(svg, 0, 0, W, H, '#101a0a'); veil.setAttribute('opacity', '0.5'); }
+  return svg;
+}
+function mapView(){
+  var restored = TRACKS.filter(function(t){ return trackRestored(t.id); }).length;
+  var wrap = h('div', null, h('h1', {class:'title'}, 'THE MAP OF CALX'),
+    h('div', {class:'scene'}, h('div', {class:'art'}, sceneArt('py')), h('div', {class:'body'},
+      h('p', {style:'margin:0 0 6px'}, h('strong', null, 'The Great Meridian: '), restored + ' of ' + TRACKS.length + ' districts restored.'),
+      h('p', {class:'sub', style:'margin:0'}, 'Each district is a field of computer science. A window lights for every completed lesson; a district is restored by passing its exam and its boss project. The path is walked in order.'),
+      !S.seen['py:story'] ? h('a', {class:'btn', href:'#story-py', style:'margin-top:12px'}, 'BEGIN THE STORY') : null)));
+  var map = h('div', {class:'map'});
+  TRACKS.forEach(function(t, i){
+    var ls = lessonsOf(t.id), total = ls.length || t.planned.length;
+    var lit = ls.filter(function(L){ return lp(L).done; }).length;
+    var open = ls.length > 0 && unlocked(ls[0]);
+    var label = ls.length ? (trackRestored(t.id) ? 'RESTORED' : open ? Math.round(100 * trackPct(t.id)) + '% LIT' : 'LOCKED') : 'BEING BUILT';
+    map.append(h('a', {class:'dtile' + (open ? '' : ' locked'), href:'#d-' + t.id, 'aria-label':t.district + ', ' + t.name + ', ' + label},
+      h('span', {class:'num'}, String(i + 1)), building(t, lit, total, !open), h('b', null, t.district.toUpperCase()),
+      h('span', {class:'sub'}, t.name), h('span', {class:'tag' + (open ? ' live' : '')}, label)));
+  });
+  wrap.append(map);
+  return wrap;
+}
+
+function districtView(tid){
+  var t = TBY[tid], D = DIST[tid], ls = lessonsOf(tid), wrap = h('div', null);
+  wrap.append(h('a', {class:'crumb', href:'#map'}, '< THE MAP'));
+  wrap.append(h('div', {class:'card'}, h('h1', {class:'title'}, t.district.toUpperCase()),
+    h('p', {style:'margin:0 0 6px'}, h('strong', null, t.name + '. '), t.blurb),
+    h('p', {class:'sub', style:'margin:0'}, 'Theme: ' + t.theme + '. Resident: ' + t.resident + '. Boss machine: ' + t.boss + '.')));
+  if (!ls.length){
+    wrap.append(h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'BEING BUILT'),
+      nitBox('This district is still shuttered. Each planned lesson below will arrive with the full set: explanation, predictions, line ordering, practice, city jobs, an explanation to write, side quests and a boss.'),
+      h('ol', null, t.planned.map(function(x){ return h('li', null, x); }))));
+    return wrap;
+  }
+  if (D && !S.seen[tid + ':story']) wrap.append(h('div', {class:'card'}, nitBox('You have not heard how this district came to stop. It takes two minutes and has a program in it to run.'), h('a', {class:'btn', href:'#story-' + tid}, 'BEGIN THE STORY')));
+  var list = h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'LESSONS'));
+  ls.forEach(function(L){
+    var p = lp(L), open = unlocked(L);
+    list.append(h(open ? 'a' : 'div', {class:'mission', href:open ? '#lesson-' + L.id : null, style:'text-decoration:none'},
+      h('span', {class:'tick' + (p.done ? ' on' : !open ? ' lock' : p.started ? ' part' : '')}, p.done ? 'OK' : !open ? '--' : ''),
+      h('div', {class:'t'}, h('b', null, L.n + '. ' + L.title), h('span', {class:'sub'}, open ? Math.round(100 * p.pct) + '% · ' + p.ex + '/' + p.exN + ' exercises · ' + p.jb + '/' + p.jbN + ' city jobs' : 'Opens at 60% of the lesson before')),
+      h('span', {class:'tag'}, p.done ? 'DONE' : !open ? 'LOCKED' : p.started ? 'OPEN' : 'NEW')));
+  });
+  wrap.append(list);
+  if (!D) return wrap;
+  var q = h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'SIDE QUESTS'), h('p', {class:'sub'}, 'Harder, optional problems that stretch the district\'s tools. Each opens with the lesson it needs.'));
+  D.quests.forEach(function(ex){
+    var key = tid + ':quest:' + ex.id, need = LBY[ex.after], open = !need || lp(need).pct >= UNLOCK;
+    if (!open) q.append(h('div', {class:'mission'}, h('span', {class:'tick lock'}, '--'), h('div', {class:'t'}, h('b', null, ex.title), h('span', {class:'sub'}, 'Opens with lesson ' + need.n + ', "' + need.title + '" (60%)'))));
+    else q.append(exercise(ex, {key:key, solvedRec:S.done[key], onSolve:function(n, peeked){ if (!S.done[key]){ S.done[key] = {t:Date.now(), n:n, peek:peeked ? 1 : 0}; award(40, 'jobs'); } return S.done[key]; }}));
+  });
+  wrap.append(q);
+  var ready = trackReady(tid), ex = S.exam[tid] || {}, pkey = tid + ':project:' + D.project.id;
+  var boss = h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'BOSS MACHINE: ' + t.boss.toUpperCase()),
+    h('p', {class:'sub'}, 'Restoring it takes the closed-book district exam (pass mark 75%) and the boss project. It is a city honour, not a qualification.'));
+  if (!ready) boss.append(nitBox('Both open when every lesson in the district is at least 60% done.'));
+  else {
+    boss.append(h('div', {class:'mission'}, h('span', {class:'tick' + (examPassed(tid) ? ' on' : ex.n ? ' part' : '')}, examPassed(tid) ? 'OK' : ''),
+      h('div', {class:'t'}, h('b', null, 'District exam: ' + D.exam.length + ' questions, ' + Math.round(D.exam.length * 75 / 60) + ' minutes'), h('span', {class:'sub'}, ex.n ? 'Best ' + Math.round(100 * (ex.best || 0)) + '% after ' + ex.n + ' attempt' + (ex.n > 1 ? 's' : '') : 'Closed book: no running code, no hints. Mixed from every lesson.')),
+      h('a', {class:'btn small', href:'#exam-' + tid}, ex.n ? 'RETAKE' : 'START')));
+    boss.append(exercise(D.project, {key:pkey, solvedRec:S.done[pkey], onSolve:function(n, peeked){
+      if (!S.done[pkey]){ S.done[pkey] = {t:Date.now(), n:n, peek:peeked ? 1 : 0}; award(80, 'jobs'); Snd.done(); toast(trackRestored(tid) ? 'The ' + t.boss + ' runs again.' : 'Project done. Pass the exam to finish the repair.', trackRestored(tid) ? 'DISTRICT RESTORED' : 'PROJECT DONE'); if (trackRestored(tid) && !boss.querySelector('.endlink')) boss.append(h('a', {class:'btn endlink', href:'#ending-' + tid}, 'SEE WHAT HAPPENS')); }
+      return S.done[pkey];
+    }}));
+  }
+  if (trackRestored(tid)) boss.append(h('a', {class:'btn endlink', href:'#ending-' + tid}, 'SEE WHAT HAPPENS'));
+  wrap.append(boss);
+  wrap.append(h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'THE FOUNDERS\' ARCHIVE'),
+    h('p', {class:'sub'}, D.archive.length + ' cards of real history behind this district, with sources, kept apart from the story.'),
+    h('div', {class:'row'}, h('a', {class:'btn small ghost', href:'#archive-' + tid}, 'OPEN THE ARCHIVE'), h('a', {class:'btn small ghost', href:'#story-' + tid}, 'REPLAY THE STORY'))));
+  return wrap;
+}
+function storyView(tid, ending){
+  var D = DIST[tid];
+  return h('div', null, h('a', {class:'crumb', href:'#d-' + tid}, '< ' + TBY[tid].district.toUpperCase()),
+    sceneView(tid, ending ? D.ending : D.opener, {doneLabel:ending ? 'BACK TO THE MAP' : 'TO THE DISTRICT', onDone:function(){
+      S.seen[tid + (ending ? ':ending' : ':story')] = Date.now(); save(); location.hash = ending ? '#map' : '#d-' + tid;
+    }, skip:ending ? null : function(){ S.seen[tid + ':story'] = Date.now(); save(); location.hash = '#d-' + tid; }}));
+}
+function archiveView(tid){
+  var D = DIST[tid];
+  var cards = D.archive.slice().sort(function(a, b){ return a.year.localeCompare(b.year); });
+  return h('div', null, h('a', {class:'crumb', href:'#d-' + tid}, '< ' + TBY[tid].district.toUpperCase()), h('h1', {class:'title'}, 'THE FOUNDERS\' ARCHIVE'),
+    nitBox('Everything in this drawer actually happened. The Founders of Calx are invented; these people and machines are not.'),
+    cards.map(function(a){ return h('div', {class:'arch'}, h('div', {class:'row'}, h('span', {class:'yr'}, a.year), h('span', {class:'tag fact'}, 'REAL HISTORY')),
+      h('h3', {style:'font-size:17px;margin:8px 0 6px'}, a.title), paras(a.text), h('div', {class:'src'}, 'Source: ' + a.source)); }));
+}
+
+/* ---- closed-book exam ---- */
+var examTimer = null;
+function examView(tid){
+  var D = DIST[tid], t = TBY[tid];
+  clearInterval(examTimer);
+  if (!trackReady(tid)) return h('div', {class:'card empty'}, h('p', null, 'The exam opens when every lesson in the district is at least 60% done.'), h('a', {class:'btn', href:'#d-' + tid}, 'BACK'));
+  if (!EXAM || EXAM.tid !== tid){
+    return h('div', {class:'card'}, h('a', {class:'crumb', href:'#d-' + tid}, '< ' + t.district.toUpperCase()), h('h1', {class:'title'}, 'DISTRICT EXAM'),
+      h('p', null, D.exam.length + ' predict-the-output questions mixed from the whole district, in random order. You have ' + Math.round(D.exam.length * 75 / 60) + ' minutes. No running code, no hints, no going back. Pass mark: 75%.'),
+      nitBox('Closed book means closed book. Paper and pencil for tracing values are allowed, and encouraged.'),
+      h('button', {class:'btn', onclick:function(){ EXAM = {tid:tid, order:shuffle(D.exam.map(function(_, i){ return i; })), i:0, answers:[], end:Date.now() + D.exam.length * 75000}; rerender(); }}, 'BEGIN'));
+  }
+  if (EXAM.i >= EXAM.order.length) return examResult(tid);
+  var q = D.exam[EXAM.order[EXAM.i]];
+  var ta = h('textarea', {rows:3, spellcheck:'false', autocapitalize:'off', 'aria-label':'What does this print?', placeholder:'Exactly what is printed'});
+  var timer = h('span', {class:'timer', 'aria-label':'Time left'});
+  function tickT(){
+    if (!EXAM || route.name !== 'exam'){ clearInterval(examTimer); return; }
+    var left = Math.max(0, Math.round((EXAM.end - Date.now()) / 1000));
+    timer.textContent = pad(Math.floor(left / 60)) + ':' + pad(left % 60);
+    if (left <= 0){ clearInterval(examTimer); EXAM.answers.push(ta.value); EXAM.i++; while (EXAM.i < EXAM.order.length){ EXAM.answers.push(''); EXAM.i++; } toast('Time is up.', 'EXAM'); rerender(); }
+  }
+  examTimer = setInterval(tickT, 1000); setTimeout(tickT, 0);
+  function submit(){ clearInterval(examTimer); EXAM.answers.push(ta.value); EXAM.i++; rerender(); window.scrollTo(0, 0); }
+  setTimeout(function(){ ta.focus(); }, 50);
+  return h('div', null, h('div', {class:'row', style:'justify-content:space-between;margin-bottom:10px'}, h('span', {class:'tag'}, 'QUESTION ' + (EXAM.i + 1) + ' OF ' + EXAM.order.length), timer),
+    h('div', {class:'bar', style:'margin-bottom:14px'}, h('i', {style:'width:' + (100 * EXAM.i / EXAM.order.length) + '%'})),
+    h('div', {class:'pred'}, h('div', {class:'hd'}, 'WHAT DOES THIS PRINT?'), h('pre', {class:'src'}, q.code), h('div', {class:'in'}, ta,
+      h('div', {class:'row', style:'margin-top:8px'}, h('button', {class:'btn', onclick:submit}, EXAM.i === EXAM.order.length - 1 ? 'FINISH' : 'NEXT'),
+        h('button', {class:'btn ghost', onclick:async function(){ if (await ask({title:'Abandon the exam?', text:'This attempt will not be recorded.', ok:'Abandon', danger:true})){ clearInterval(examTimer); EXAM = null; location.hash = '#d-' + tid; } }}, 'ABANDON')))));
+}
+function examResult(tid){
+  var D = DIST[tid], right = 0;
+  var rows = EXAM.order.map(function(qi, i){ var q = D.exam[qi], ok = normOut(EXAM.answers[i] || '') === normOut(q.ans); if (ok) right++; return {q:q, ok:ok, a:EXAM.answers[i] || ''}; });
+  var score = right / rows.length, pass = score >= 0.75;
+  if (!EXAM.recorded){
+    EXAM.recorded = true;
+    var e = S.exam[tid] || {best:0, n:0}, was = examPassed(tid);
+    S.exam[tid] = {best:Math.max(e.best || 0, score), n:(e.n || 0) + 1, t:Date.now()}; award(Math.round(60 * score), null);
+    if (!was && examPassed(tid)){ Snd.done(); toast(trackRestored(tid) ? 'The ' + TBY[tid].boss + ' runs again.' : 'Exam passed. Now the boss project.', trackRestored(tid) ? 'DISTRICT RESTORED' : 'PASSED'); }
+  }
+  return h('div', null, h('div', {class:'card'}, h('h1', {class:'title'}, (pass ? 'PASSED: ' : 'NOT YET: ') + right + ' / ' + rows.length + ' (' + Math.round(100 * score) + '%)'),
+      nitBox(pass ? 'Passed. I have stamped the inspection card. Read your wrong answers anyway: they are the most useful part.' : 'Below 75%. That is information, not judgement. Read each wrong answer below, revisit its lesson, and retake when ready.'),
+      h('a', {class:'btn', href:'#d-' + tid, onclick:function(){ EXAM = null; }}, 'BACK TO THE DISTRICT')),
+    h('h2', {class:'sec'}, 'REVIEW'),
+    rows.map(function(r, i){ return h('div', {class:'pred'}, h('div', {class:'hd'}, (i + 1) + '. ' + (r.ok ? 'RIGHT' : 'WRONG')), h('pre', {class:'src'}, r.q.code),
+      h('div', {class:'fb ' + (r.ok ? 'ok' : 'no')}, !r.ok ? [h('strong', null, 'You wrote:'), h('pre', null, r.a || '(nothing)')] : null, h('strong', null, 'Output:'), h('pre', null, r.q.ans), h('p', null, fmt(r.q.why)))); }));
+}
+
+/* ---- flashcards ---- */
+function startReview(){
+  var t = dayNum(), list = cardList();
+  var due = list.filter(function(c){ return c.st && c.st.due <= t; }).sort(function(a, b){ return a.st.due - b.st.due; }).slice(0, S.set.maxReviews);
+  var fresh = shuffle(list.filter(function(c){ return !c.st; })).slice(0, newAvail(list));
+  R = {queue:shuffle(due).concat(fresh), shown:false, done:0, total:due.length + fresh.length, again:0};
+}
+function cardsView(){
+  var list = cardList(), wrap = h('div', null);
+  if (R && R.queue.length) return reviewView();
+  if (R && R.total && !R.queue.length){
+    wrap.append(h('div', {class:'card empty'}, h('h2', {class:'h-pix'}, 'SESSION COMPLETE'), h('p', null, 'You reviewed ' + R.done + ' cards' + (R.again ? ' (' + R.again + ' needed another look)' : '') + '.'), h('a', {class:'btn', href:'#home'}, 'BACK HOME')));
+    R = null; return wrap;
+  }
+  var due = dueToday(), all = dueCards().length, nw = newAvail(list);
+  wrap.append(h('div', {class:'card'}, h('h1', {class:'title'}, 'FLASHCARDS'),
+    h('p', {class:'sub'}, list.length ? due + ' due' + (all > due ? ' (of ' + all + ' waiting, capped for today)' : '') + ', ' + nw + ' new today (limit ' + S.set.newPerDay + '). ' + list.length + ' cards unlocked, including NIT\'s Index terms.' : 'Cards unlock when you open a lesson.'),
+    (due + nw) ? h('button', {class:'btn', onclick:function(){ startReview(); rerender(); }}, 'START REVIEW') : (list.length ? h('p', null, 'All caught up. Come back tomorrow.') : h('a', {class:'btn', href:'#map'}, 'OPEN A LESSON'))));
+  var byL = {}; list.forEach(function(c){ (byL[c.lesson.id] = byL[c.lesson.id] || []).push(c); });
+  var t = dayNum();
+  Object.keys(byL).forEach(function(id){
+    var cs = byL[id], L = LBY[id];
+    var known = cs.filter(function(c){ return c.st && c.st.ivl >= 21; }).length, seen = cs.filter(function(c){ return c.st; }).length;
+    wrap.append(h('div', {class:'card tight'}, h('b', null, L.n + '. ' + L.title), h('div', {class:'sub'}, cs.length + ' cards: ' + seen + ' seen, ' + known + ' well known (21+ days), ' + cs.filter(function(c){ return c.st && c.st.due <= t; }).length + ' due'),
+      h('div', {class:'bar', style:'margin-top:8px;height:10px'}, h('i', {style:'width:' + (100 * known / cs.length) + '%'}))));
+  });
+  return wrap;
+}
+var cardKeyHandler = null;
+function reviewView(){
+  var c = R.queue[0], st = c.st, t = dayNum();
+  var wrap = h('div', null, h('div', {class:'row', style:'justify-content:space-between;margin-bottom:10px'},
+    h('span', {class:'tag'}, R.done + ' DONE, ' + R.queue.length + ' LEFT'),
+    h('button', {class:'btn small ghost', onclick:function(){ R = null; rerender(); }}, 'END SESSION')),
+    h('div', {class:'bar', style:'margin-bottom:14px'}, h('i', {style:'width:' + (100 * R.done / Math.max(1, R.total)) + '%'})));
+  var face = h('div', {class:'fcard', tabindex:'0', role:'button', 'aria-label':'Flip card'}, h('span', {class:'side'}, (c.term ? 'NIT\'S INDEX · ' : 'QUESTION · ') + c.lesson.title.toUpperCase()), h('div', {class:'q'}, fmt(c.f)));
+  var rates = h('div', {class:'rate', hidden:true});
+  var reveal = h('button', {class:'btn', style:'width:100%;margin-top:14px'}, 'SHOW ANSWER');
+  function show(){
+    if (R.shown) return; R.shown = true;
+    face.append(h('div', {class:'a'}, h('span', {class:'side'}, 'ANSWER'), h('div', null, paras(c.b))));
+    rates.hidden = false; reveal.hidden = true;
+  }
+  function rate(r){
+    if (!R || !R.shown) return;
+    var isNew = !st;
+    S.cards[c.id] = schedule(st, r, t);
+    if (isNew) dayRec().newc++;
+    award(r >= 2 ? 2 : 1, 'cards');
+    R.queue.shift(); R.shown = false;
+    if (r === 0){ R.again++; R.queue.push(Object.assign({}, c, {st:S.cards[c.id]})); } else R.done++;
+    rerender();
+  }
+  reveal.addEventListener('click', show); face.addEventListener('click', show);
+  face.addEventListener('keydown', function(e){ if (e.key === 'Enter'){ e.preventDefault(); show(); } });
+  [['again', 'AGAIN', 0], ['hard', 'HARD', 1], ['good', 'GOOD', 2], ['easy', 'EASY', 3]].forEach(function(x){
+    rates.append(h('button', {class:'btn ' + x[0], onclick:function(){ rate(x[2]); }}, x[1], h('small', null, ivlLabel(st, x[2]))));
+  });
+  var sx = null, sy = 0, dx = 0, dy = 0;
+  face.addEventListener('touchstart', function(e){ sx = e.touches[0].clientX; sy = e.touches[0].clientY; dx = dy = 0; }, {passive:true});
+  face.addEventListener('touchmove', function(e){ if (sx == null) return; dx = e.touches[0].clientX - sx; dy = e.touches[0].clientY - sy; if (Math.abs(dx) > 14 && Math.abs(dx) > Math.abs(dy)) face.style.transform = 'translateX(' + dx * 0.6 + 'px) rotate(' + dx / 40 + 'deg)'; }, {passive:true});
+  face.addEventListener('touchend', function(){
+    face.style.transform = '';
+    if (sx == null) return;
+    var ax = Math.abs(dx), ay = Math.abs(dy); sx = null;
+    if (ax > 90 && ax > ay){ if (!R.shown) show(); else rate(dx > 0 ? 2 : 0); }
+    else if (R.shown && ay > 90 && ay > ax) rate(dy < 0 ? 3 : 1);
+  });
+  wrap.append(face, reveal, h('div', {style:'margin-top:14px'}, rates), h('p', {class:'sub', style:'margin-top:12px'}, 'Answer in your head before flipping, then rate honestly. Swipe right Good, left Again, up Easy, down Hard. Keys: Space flips, 1 to 4 rate.'));
+  if (cardKeyHandler) document.removeEventListener('keydown', cardKeyHandler);
+  cardKeyHandler = function(e){
+    if (route.name !== 'cards' || !R || !R.queue.length){ document.removeEventListener('keydown', cardKeyHandler); cardKeyHandler = null; return; }
+    if (e.target && /TEXTAREA|INPUT/.test(e.target.tagName)) return;
+    if (e.key === ' ' && !R.shown){ e.preventDefault(); show(); }
+    else if (R.shown && ['1', '2', '3', '4'].indexOf(e.key) >= 0) rate(Number(e.key) - 1);
+  };
+  document.addEventListener('keydown', cardKeyHandler);
+  return wrap;
+}
+
+/* ---- NIT's Index ---- */
+function indexView(){
+  var q = h('input', {type:'search', class:'search', placeholder:'Search ' + TERMS.length + ' terms', 'aria-label':'Search the index'});
+  var list = h('div', {class:'card tight'});
+  function draw(){
+    var s = q.value.trim().toLowerCase();
+    var shown = TERMS.filter(function(t){ return S.read[t.lesson.id] || s; }).filter(function(t){ return !s || (t.term + ' ' + t.def + ' ' + t.ex).toLowerCase().indexOf(s) >= 0; });
+    shown.sort(function(a, b){ return a.term.localeCompare(b.term); });
+    var locked = TERMS.filter(function(t){ return !S.read[t.lesson.id]; }).length;
+    fill(list, shown.length ? shown.map(termRow) : h('p', {class:'sub', style:'margin:0'}, s ? 'Nothing matches.' : 'Terms are filed here as you open lessons.'), !s && locked ? h('p', {class:'sub', style:'margin:10px 0 0'}, locked + ' more terms are filed as you open lessons. Searching shows them all.') : null);
+  }
+  q.addEventListener('input', draw); draw();
+  return h('div', null, h('h1', {class:'title'}, 'NIT\'S INDEX'), nitBox('Every term I have corrected you on, filed alphabetically. Precise definitions are a kindness. Mostly to me.'), q, h('div', {style:'height:12px'}), list);
+}
+
+/* ---- Me ---- */
+function cabinetItems(){
+  var keys = Object.keys(S.done);
+  var par = keys.some(function(k){ return k.indexOf(':par:') > 0; });
+  var job = keys.some(function(k){ return k.indexOf(':job:') > 0; });
+  var quests = keys.filter(function(k){ return k.indexOf(':quest:') > 0; }).length;
+  var taught = Object.keys(S.teach).filter(function(k){ return S.teach[k].self; }).length;
+  var redo = Object.keys(S.redo).filter(function(k){ return !S.redo[k].skip; }).length;
+  return [
+    ['First Repair', 'Solved your first exercise.', keys.length > 0, 'g'],
+    ['Line Spanner', 'Ordered your first program.', par, 'y'],
+    ['Tram Token', 'Finished your first city job.', job, 'y'],
+    ['Chalk Stub', 'Explained a lesson in your own words.', taught > 0, 'w'],
+    ['Lesson Lamp', 'Completed a whole lesson.', LESSONS.some(function(L){ return lp(L).done; }), 'y'],
+    ['Blank Page', 'Re-did an exercise from memory.', redo > 0, 'w'],
+    ['Quest Ribbon', 'Finished a side quest.', quests > 0, 'r'],
+    ['Five Ribbons', 'Finished all five Workshop side quests.', quests >= 5, 'r'],
+    ['Inspection Stamp', 'Passed the Workshop exam.', examPassed('py'), 'g'],
+    ['Bench Key', 'Repaired the Bench Automaton.', trackRestored('py'), 'y']
+  ];
+}
+var ITEM_ART = ['..1111..','.122221.','12222221','12233221','12233221','12222221','.122221.','..1111..'];
+function stat(a, b){ return h('div', {class:'stat'}, h('b', null, a), h('span', null, b)); }
+function meView(){
+  var wrap = h('div', null);
+  var solved = Object.keys(S.done).length, preds = Object.keys(S.pred).filter(function(k){ return S.pred[k].ok; }).length;
+  var cs = cardList(), known = cs.filter(function(c){ return c.st && c.st.ivl >= 21; }).length;
+  var reviews = 0; for (var k in S.days) reviews += S.days[k].cards || 0;
+  wrap.append(h('div', {class:'card'}, h('h1', {class:'title'}, 'PROGRESS'),
+    h('div', {class:'stats'},
+      stat(LESSONS.filter(function(L){ return lp(L).done; }).length + '/' + LESSONS.length, 'lessons complete'),
+      stat(String(solved), 'exercises and jobs solved'), stat(String(preds), 'predictions right'),
+      stat(String(known), 'cards well known'), stat(String(reviews), 'card reviews'),
+      stat(String(Object.keys(S.teach).filter(function(k){ return S.teach[k].self; }).length), 'lessons explained'),
+      S.set.showXp ? stat('LV ' + levelOf(totalXp()), totalXp() + ' XP') : null, S.set.showXp ? stat(String(calcStreak()), 'day streak') : null)));
+  if (S.set.cityMode){
+    var cols = {g:'#8BD122', y:'#FFD75E', w:'#F2EBD0', r:'#E0566A'};
+    wrap.append(h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'THE CABINET'), h('p', {class:'sub'}, 'Earned by finishing work, never by turning up.'),
+      h('div', {class:'cab'}, cabinetItems().map(function(it){
+        return h('div', {class:'it' + (it[2] ? '' : ' off'), title:it[1]}, pix(ITEM_ART, {1:'#17230E', 2:it[2] ? cols[it[3]] : '#55604a', 3:it[2] ? '#ffffff' : '#6b7560'}, 48), h('b', null, it[2] ? it[0] : '?'), h('div', {class:'sub', style:'font-size:12px'}, it[1]));
+      }))));
+  }
+  function seg(name, opts, cur, on){ return h('div', {class:'seg', role:'group', 'aria-label':name}, opts.map(function(o){ return h('button', {type:'button', 'aria-pressed':String(cur === o[0]), onclick:function(){ on(o[0]); }}, o[1]); })); }
+  function slider(id, label, min, max, step, val, on){
+    var o = h('output', {for:id}, String(val));
+    return h('div', {class:'field'}, h('label', {for:id}, label), h('input', {type:'range', id:id, min:min, max:max, step:step, value:val, oninput:function(e){ o.textContent = e.target.value; }, onchange:function(e){ on(Number(e.target.value)); }}), o);
+  }
+  function toggle(label, on, set, note){ return h('div', {class:'field'}, h('label', null, label), seg(label, [[true, 'ON'], [false, 'OFF']], on, set), note ? h('span', {class:'sub', style:'flex-basis:100%'}, note) : null); }
+  wrap.append(h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'SETTINGS'),
+    h('div', {class:'field'}, h('label', null, 'Theme'), seg('Theme', [['auto', 'AUTO'], ['light', 'LIGHT'], ['dark', 'DARK']], S.set.theme, function(v){ S.set.theme = v; applyTheme(); save(); rerender(); })),
+    slider('set-new', 'New cards per day', 0, 30, 1, S.set.newPerDay, function(v){ S.set.newPerDay = v; save(); chrome(); }),
+    slider('set-max', 'Most reviews per day', 10, 200, 10, S.set.maxReviews, function(v){ S.set.maxReviews = v; save(); chrome(); }),
+    toggle('City mode', S.set.cityMode, function(v){ S.set.cityMode = v; save(); rerender(); }, 'Adds the cabinet of earned items and calls re-dos "odd jobs". The story, map and city jobs are always on.'),
+    toggle('Sound', S.set.sound, function(v){ S.set.sound = v; save(); Snd.ambience(v); if (v) Snd.right(); rerender(); }, 'Soft ticking and chiptune blips, generated in the page.'),
+    toggle('Show XP and streak', S.set.showXp, function(v){ S.set.showXp = v; save(); rerender(); }, 'Off by default: no-pressure mode.'),
+    S.set.showXp ? slider('set-goal', 'Daily goal (XP)', 10, 300, 10, S.set.goalXp, function(v){ S.set.goalXp = v; save(); }) : null));
+  var statusText = JSON.stringify(buildStatus(), null, 2);
+  var cloud = Cloud.ref ? ({on:'Synced across your devices through this page.', cached:'Showing saved data. Waiting for the server.', connecting:'Connecting...', slow:'The server is slow to answer. Your progress is saved on this device.', error:'Cloud sync hit an error. Your progress is saved on this device.'}[Cloud.status] || '') : '';
+  var gConn = gValid() || LS.get('lime.gconn') === '1';
+  wrap.append(h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'CITRUS AND DRIVE'),
+    h('p', {class:'sub'}, 'Lime follows your hub contract: it writes status.json to My Apps/hub/lime and backs up progress to state.json there, so Citrus can see what is due and plan study time. It reads Citrus\'s plan.json for blocks planned for Lime.'),
+    cloud ? h('p', null, h('strong', null, 'This page: '), cloud, Cloud.last ? ' Last: ' + fmtDateTime(Cloud.last) + '.' : '') : null,
+    h('p', null, h('strong', null, 'Google Drive: '), G.unavailable ? 'Google sign-in cannot open in this view. It works in the installed Lime app.' : (gValid() ? 'Connected.' : gConn ? 'Tap Sync to sign in again (Google tokens last an hour).' : 'Not connected.'), G.last ? ' Last sync: ' + fmtDateTime(G.last) + '.' : ''),
+    G.lastErr ? h('p', {style:'color:var(--bad)'}, G.lastErr) : null,
+    h('div', {class:'row'}, h('button', {class:'btn small', onclick:function(){ syncAll(true); }}, gConn ? 'SYNC NOW' : 'CONNECT GOOGLE'), h('button', {class:'btn small ghost', onclick:function(){ copyText(statusText); }}, 'COPY STATUS JSON')),
+    h('pre', {class:'json', tabindex:'0', 'aria-label':'Status file preview'}, statusText)));
+  var paste = h('textarea', {class:'paste', placeholder:'Paste a progress backup here, then press Merge.', 'aria-label':'Paste a progress backup'});
+  wrap.append(h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'BACKUP BY HAND'),
+    h('p', {class:'sub'}, 'Progress is saved on this device automatically. You can also copy it out and merge it in elsewhere.'),
+    h('div', {class:'row'}, h('button', {class:'btn small ghost', onclick:function(){ copyText(JSON.stringify(S)); }}, 'COPY PROGRESS'),
+      h('button', {class:'btn small ghost', onclick:function(){
+        try { var o = JSON.parse(paste.value); if (!o || typeof o !== 'object' || !o.days) throw new Error('x'); S = mergeState(S, o); save(); toast('Merged.'); rerender(); }
+        catch(e){ toast('That is not a Lime backup.'); }
+      }}, 'MERGE')), paste,
+    h('div', {class:'row', style:'margin-top:12px'}, h('button', {class:'btn small danger', onclick:async function(){
+      var yes = await ask({title:'Reset all progress?', text:'This clears solved exercises, explanations, notes, snippets and flashcard schedules on this device and, if sync is on, on your other devices.', ok:'Reset everything', danger:true});
+      if (!yes) return; var s = blank(); s.epoch = Date.now(); s.set = S.set; S = s; drafts = {}; LS.set('lime.drafts', '{}'); save(); R = null; EXAM = null; toast('Progress reset.'); rerender();
+    }}, 'RESET PROGRESS'))));
+  wrap.append(h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'ABOUT THE PYTHON ENGINE'),
+    h('p', {class:'sub'}, 'Python runs inside this page using Brython, a Python 3 interpreter written in JavaScript. Every lesson item is checked in both Brython and desktop Python before release. Known differences:'),
+    h('ul', null,
+      h('li', null, fmt('`"".split()` and other whitespace-only strings return `[\'\']` here, but `[]` in desktop Python.')),
+      h('li', null, fmt('`round(2.675, 2)` gives `2.68` here, but `2.67` in desktop Python.')),
+      h('li', null, 'Summing many floats can differ in the last digit.'),
+      h('li', null, fmt('`input()` is not available. Put test values in variables.')),
+      h('li', null, 'A loop that runs for several seconds is stopped for you.'),
+      h('li', null, 'NumPy and pandas are not available yet. The data track will teach the ideas first with plain Python.'))));
+  return wrap;
+}
+
+/* ================= Citrus / Drive hub ================= */
+function appUrl(){ if (S.set.appUrl) return S.set.appUrl; var u = location.href.split('#')[0]; return /^https?:\/\//.test(u) ? u : ''; }
+function addDays(key, n){ var d = new Date(key + 'T12:00:00'); d.setDate(d.getDate() + n); return keyOf(d); }
+function shiftOn(key){ var d = G.planDays && G.planDays[key]; return d ? (d.shift || null) : undefined; }
+function dayLoad(key){
+  /* how much Lime asks for on a day, around the rota Citrus publishes (plan.json days[date].shift) */
+  var sh = shiftOn(key), prev = shiftOn(addDays(key, -1));
+  if (sh && sh.overnight) return {kind:'night', cap:0, slot:'free', note:'night shift: rest'};
+  if (prev && prev.overnight) return {kind:'postnight', cap:15, slot:'free', note:'after a night: light reviews only'};
+  if (sh) return {kind:'day', cap:30, slot:'before', note:'shift day'};
+  return {kind:'free', cap:75, slot:'free', note:''};
+}
+function buildStatus(){
+  var t = keyOf(), due = dueTotal(), nl = nextLesson();
+  var known = cardList().filter(function(c){ return c.st && c.st.ivl >= 21; }).length;
+  var rd = redoPick(), load = dayLoad(t);
+  var want = Math.round(due * 0.4) + (nl ? 35 : 0) + (rd ? 8 : 0);
+  var minutes = load.cap === 0 ? 0 : Math.max(10, Math.min(load.cap, want));
+  var bits = [];
+  if (due) bits.push(due + ' cards due');
+  if (nl) bits.push('next: ' + nl.title);
+  if (rd) bits.push('1 re-do');
+  if (load.note) bits.push(load.note);
+  var d = S.days[t] || {};
+  var items = (d.ex || 0) + (d.jobs || 0) + (d.pred || 0);
+  var lessonsDone = LESSONS.filter(function(L){ return lp(L).done; }).length;
+  var base = appUrl();
+  var asks = [];
+  if (minutes > 0 && (due || nl || rd)) asks.push({date:t, title:load.kind === 'postnight' ? 'Lime: light reviews' : (nl ? 'Lime: ' + nl.title : 'Lime: reviews'), minutes:minutes, slot:load.slot});
+  for (var i = 1; i <= 6; i++){
+    var k = addDays(t, i), ld = dayLoad(k);
+    if (ld.cap > 0 && (nl || due)) asks.push({date:k, title:ld.kind === 'postnight' ? 'Lime: light reviews' : 'Lime: study', minutes:Math.min(ld.cap, nl ? 45 : 20), slot:ld.slot});
+  }
+  function act(id, label, minutes){ return {id:id, label:label, url:base, icon:APP.icon, minutes:minutes}; }
+  return {
+    app:APP.id, title:APP.title, icon:APP.icon, color:APP.color, url:base, version:APP.version, contract:2,
+    updatedAt:new Date().toISOString(),
+    summary:bits.join(' · ') || 'All caught up',
+    due:due, estimatedMinutes:minutes, streak:calcStreak(), nextDue:(due || nl || rd) ? (load.cap ? 'now' : 'tomorrow') : 'tomorrow',
+    today:{date:t, done:items >= 3 && dueToday() === 0},
+    next:minutes ? {title: nl ? 'Lime: ' + nl.title : 'Lime: review', minutes:minutes} : null,
+    asks:asks,
+    pending: [].concat(due ? [due + ' cards due'] : [], nl ? ['Lesson ' + nl.n + ': ' + nl.title] : [], rd ? ['Re-do: ' + rd.ex.title] : []),
+    metrics:[
+      {key:'cards-due', label:'Cards due', value:due, goal:0, unit:'cards', date:t},
+      {key:'items', label:'Exercises and predictions today', value:items, goal:5, unit:'items', date:t},
+      {key:'reviews', label:'Card reviews today', value:d.cards || 0, unit:'reviews', date:t},
+      {key:'lessons', label:'Lessons complete', value:lessonsDone, goal:LESSONS.length, unit:'lessons', date:t},
+      {key:'cards-known', label:'Cards well known', value:known, unit:'cards', date:t}
+    ],
+    progress: TRACKS.filter(function(x){ return lessonsOf(x.id).length; }).map(function(x){ return {key:'district-' + x.id, label:'Lime: ' + x.district, pct:Math.round(100 * trackPct(x.id)), date:t}; }),
+    actions: base ? [].concat(nl ? [act('lesson', 'Lime: ' + nl.title, Math.min(45, nl.minutes + 35))] : [], due ? [act('review', 'Review ' + due + ' cards', Math.max(5, Math.round(due * 0.4)))] : [], rd ? [act('redo', 'Re-do: ' + rd.ex.title, 10)] : [], [act('bench', 'Open the workbench', 15)]) : [],
+    extra:{streak:calcStreak(), xp:totalXp(), due:due, lessonsDone:lessonsDone, lessonsTotal:LESSONS.length, cardsKnown:known, solved:Object.keys(S.done).length,
+      districtsRestored:TRACKS.filter(function(x){ return trackRestored(x.id); }).length, district:nl ? TBY[nl.track].district : null, dayKind:load.kind}
+  };
+}
+var G = {
+  clientId:'753489712404-ra7ahu34gjl305b4ss1765idmqg7am5s.apps.googleusercontent.com',
+  scope:'https://www.googleapis.com/auth/drive',
+  token:null, exp:0, unavailable:false, ids:{}, inflight:{}, queues:{}, last:0, lastErr:'', plan:null, planAt:0
+};
+try { G.ids = JSON.parse(LS.get('lime.gids') || '{}') || {}; } catch(e){}
+try { var tk = JSON.parse(LS.get('lime.gtok') || 'null'); if (tk && tk.exp > Date.now() + 120000){ G.token = tk.token; G.exp = tk.exp; } } catch(e){}
+function saveIds(){ LS.set('lime.gids', JSON.stringify(G.ids)); }
+function gValid(){ return !!G.token && Date.now() < G.exp - 60000; }
+function gConnect(prompt){
+  return new Promise(async function(resolve, reject){
+    try {
+      if (window.__limeToken){ G.token = window.__limeToken; G.exp = Date.now() + 3600000; return resolve(); }
+      if (!(window.google && google.accounts && google.accounts.oauth2)) await loadScript('https://accounts.google.com/gsi/client', 8000);
+      var client = google.accounts.oauth2.initTokenClient({
+        client_id:G.clientId, scope:G.scope,
+        callback:function(r){ if (r.error) return reject(new Error(r.error)); G.token = r.access_token; G.exp = Date.now() + (r.expires_in || 3600) * 1000; LS.set('lime.gconn', '1'); LS.set('lime.gtok', JSON.stringify({token:G.token, exp:G.exp})); resolve(); },
+        error_callback:function(e){ reject(new Error((e && e.type) || 'sign-in cancelled')); }
+      });
+      client.requestAccessToken({prompt: prompt == null ? '' : prompt});
+    } catch(e){ G.unavailable = true; reject(e); }
+  });
+}
+async function gapi(url, o){
+  o = o || {};
+  var method = o.method || 'GET', tries = 0;
+  for (;;){
+    var res;
+    try { res = await fetch(url, {method:method, headers:Object.assign({Authorization:'Bearer ' + G.token}, o.headers || {}), body:o.body}); }
+    catch(e){ if (method !== 'POST' && tries < 2){ tries++; await sleep(400 * tries + Math.random() * 300); continue; } throw new Error('offline'); }
+    if (res.status === 401){ G.token = null; LS.set('lime.gtok', 'null'); throw new Error('auth'); }
+    if ((res.status === 429 || res.status >= 500 || res.status === 403) && tries < 3){ tries++; await sleep(500 * tries + Math.random() * 500); continue; }
+    if (!res.ok){ var err = new Error('drive ' + res.status); err.status = res.status; throw err; }
+    return res;
+  }
+}
+function esc(s){ return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+var DRIVE = 'https://www.googleapis.com/drive/v3/files';
+async function findOne(name, parent, folder){
+  var q = "name='" + esc(name) + "' and '" + parent + "' in parents and trashed=false and mimeType" + (folder ? "='application/vnd.google-apps.folder'" : "!='application/vnd.google-apps.folder'");
+  var res = await gapi(DRIVE + '?q=' + encodeURIComponent(q) + '&orderBy=createdTime&pageSize=10&fields=' + encodeURIComponent('files(id,name,modifiedTime,appProperties)'));
+  var j = await res.json();
+  return (j.files && j.files[0]) || null;
+}
+function once(key, fn){ if (G.inflight[key]) return G.inflight[key]; var p = fn().finally(function(){ delete G.inflight[key]; }); G.inflight[key] = p; return p; }
+async function ensureFolder(name, parent){
+  return once('f:' + parent + '/' + name, async function(){
+    var found = await findOne(name, parent, true);
+    if (found) return found.id;
+    var res = await gapi(DRIVE + '?fields=id', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name, mimeType:'application/vnd.google-apps.folder', parents:[parent]})});
+    return (await res.json()).id;
+  });
+}
+async function ensurePath(names){
+  var cacheKey = names.join('/'), id;
+  if (G.ids[cacheKey]){
+    try { await gapi(DRIVE + '/' + G.ids[cacheKey] + '?fields=id,trashed'); return G.ids[cacheKey]; }
+    catch(e){ if (e.status === 404) delete G.ids[cacheKey]; else throw e; }
+  }
+  id = 'root';
+  for (var i = 0; i < names.length; i++) id = await ensureFolder(names[i], id);
+  G.ids[cacheKey] = id; saveIds(); return id;
+}
+async function findPath(names){ var id = 'root'; for (var i = 0; i < names.length; i++){ var f = await findOne(names[i], id, true); if (!f) return null; id = f.id; } return id; }
+async function sha(text){
+  try { var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)); return Array.prototype.map.call(new Uint8Array(buf), function(b){ return b.toString(16).padStart(2, '0'); }).join('').slice(0, 40); }
+  catch(e){ var x = 2166136261; for (var i = 0; i < text.length; i++){ x ^= text.charCodeAt(i); x = Math.imul(x, 16777619); } return 'f' + (x >>> 0).toString(16); }
+}
+function multipart(meta, content){
+  var b = 'lime' + Math.random().toString(36).slice(2);
+  return {type:'multipart/related; boundary=' + b, body:'--' + b + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) + '\r\n--' + b + '\r\nContent-Type: application/json\r\n\r\n' + content + '\r\n--' + b + '--'};
+}
+function serial(key, fn){ var prev = G.queues[key] || Promise.resolve(); var next = prev.catch(function(){}).then(fn); G.queues[key] = next; return next; }
+function putJson(parent, name, obj, rev){
+  return serial(parent + '/' + name, async function(){
+    var text = JSON.stringify(obj), basis = Object.assign({}, obj); delete basis.updatedAt; var h1 = await sha(JSON.stringify(basis));
+    var ex = await findOne(name, parent, false);
+    if (ex && ex.appProperties && ex.appProperties.h === h1) return {skipped:true, id:ex.id};
+    var props = {h:h1, rev:String(rev == null ? ((ex && ex.appProperties && Number(ex.appProperties.rev)) || 0) + 1 : rev)};
+    if (ex){
+      var m = multipart({appProperties:props}, text);
+      var r = await gapi('https://www.googleapis.com/upload/drive/v3/files/' + ex.id + '?uploadType=multipart&fields=id', {method:'PATCH', headers:{'Content-Type':m.type}, body:m.body});
+      return {id:(await r.json()).id, updated:true};
+    }
+    var m2 = multipart({name:name, parents:[parent], mimeType:'application/json', appProperties:props}, text);
+    var r2 = await gapi('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {method:'POST', headers:{'Content-Type':m2.type}, body:m2.body});
+    return {id:(await r2.json()).id, created:true};
+  });
+}
+async function readJson(id){ var res = await gapi(DRIVE + '/' + id + '?alt=media'); var buf = await res.arrayBuffer(); return JSON.parse(new TextDecoder().decode(buf)); }
+async function gPushStatus(force){
+  if (!force && Date.now() - (G.statusAt || 0) < 5 * 60000){ clearTimeout(G.statusTimer); G.statusTimer = setTimeout(function(){ if (gValid()) gPushStatus(true).catch(function(){}); }, 5 * 60000 - (Date.now() - G.statusAt)); return {deferred:true}; }
+  var dir = await ensurePath(['My Apps', 'hub', 'lime']); G.statusAt = Date.now(); return putJson(dir, 'status.json', buildStatus());
+}
+async function gSyncState(){
+  var dir = await ensurePath(['My Apps', 'hub', 'lime']);
+  for (var round = 0; round < 2; round++){
+    var ex = await findOne('state.json', dir, false), rev0 = ex && ex.appProperties ? Number(ex.appProperties.rev || 0) : 0;
+    if (ex){ var remote = await readJson(ex.id); var merged = mergeState(S, remote && remote.state); if (!same(merged, S)){ S = merged; persistLocal(); } }
+    var now = await findOne('state.json', dir, false), rev1 = now && now.appProperties ? Number(now.appProperties.rev || 0) : 0;
+    if (rev1 !== rev0) continue;
+    await putJson(dir, 'state.json', {app:APP.id, v:2, updatedAt:new Date().toISOString(), state:S}, rev0 + 1);
+    return;
+  }
+}
+async function gLoadPlan(){
+  var dir = await findPath(['My Apps', 'hub', 'citrus']);
+  if (!dir){ G.plan = []; G.planAt = Date.now(); return; }
+  var f = await findOne('plan.json', dir, false);
+  if (!f){ G.plan = []; G.planAt = Date.now(); return; }
+  var j = await readJson(f.id);
+  G.planDays = (j && j.days && typeof j.days === 'object') ? j.days : {};
+  var blocks = (j && Array.isArray(j.blocks)) ? j.blocks : [];
+  G.plan = blocks.filter(function(b){ return b && b.app === APP.id; }).map(function(b){
+    return {date:String(b.date || '').slice(0, 10), start:String(b.start || '').slice(0, 5), end:String(b.end || '').slice(0, 5), title:String(b.title || 'Lime').slice(0, 80), status:b.status === 'accepted' ? 'accepted' : 'suggested'};
+  });
+  G.planAt = Date.now();
+}
+var syncing = false;
+async function syncAll(manual){
+  if (syncing) return;
+  if (!gValid()){
+    if (!manual) return;
+    try { await gConnect(''); } catch(e){ G.lastErr = G.unavailable ? 'Google sign-in is not available in this view.' : 'Sign-in did not finish.'; return rerender(); }
+  }
+  syncing = true; chrome();
+  try {
+    if (Date.now() - G.planAt > 30 * 60000 || manual) await gLoadPlan().catch(function(){});
+    await gSyncState(); await gPushStatus(manual);
+    G.last = Date.now(); G.lastErr = '';
+  } catch(e){ G.lastErr = e.message === 'offline' ? 'Offline. Will retry.' : e.message === 'auth' ? 'Tap Sync to sign in again.' : 'Sync failed (' + e.message + ').'; }
+  syncing = false; chrome(); if (manual) rerender();
+}
+var syncTimer = null, driveTimer = null;
+function queueSync(){
+  clearTimeout(syncTimer); syncTimer = setTimeout(cloudPush, 1500);
+  clearTimeout(driveTimer); if (gValid()) driveTimer = setTimeout(function(){ syncAll(false); }, 30000);
+}
+
+/* ================= cloud sync when this page runs as a Claude artifact ================= */
+var Cloud = {ref:null, status:'off', last:0, writing:false, pending:false, pushedOnce:false};
+async function cloudInit(){
+  try {
+    if (!(window.claude && window.claude.use)) return;
+    var res = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+    var db = res[0], user = res[1];
+    if (!db || !user) return;
+    var uid = await user.id(); if (!uid) return;
+    Cloud.ref = db.doc('data/users/' + uid + '/progress'); Cloud.status = 'connecting';
+    var timer = setTimeout(function(){ if (Cloud.status === 'connecting') Cloud.status = 'slow'; }, 10000);
+    Cloud.ref.onSnapshot(function(snap){
+      clearTimeout(timer); Cloud.last = Date.now(); Cloud.status = snap.metadata.fromCache ? 'cached' : 'on';
+      var d = snap.exists ? snap.data() : null;
+      if (d && d.state){
+        var merged = mergeState(S, d.state);
+        if (!same(merged, S)){ S = merged; persistLocal(); rerenderSoft(); }
+        if (!snap.metadata.fromCache && !same(merged, d.state)) cloudPush();
+      } else if (!snap.metadata.fromCache && !Cloud.pushedOnce){ cloudPush(); }
+      if (!snap.metadata.fromCache) Cloud.pushedOnce = true;
+    }, function(){ Cloud.status = 'error'; });
+  } catch(e){ Cloud.status = 'off'; }
+}
+async function cloudPush(){
+  if (!Cloud.ref) return;
+  if (Cloud.writing){ Cloud.pending = true; return; }
+  Cloud.writing = true;
+  try { await Cloud.ref.set({v:2, updatedAt:Date.now(), state:JSON.parse(JSON.stringify(S))}); Cloud.last = Date.now(); if (Cloud.status !== 'on') Cloud.status = 'on'; }
+  catch(e){ Cloud.status = 'error'; }
+  Cloud.writing = false;
+  if (Cloud.pending){ Cloud.pending = false; cloudPush(); }
+}
+
+/* ================= boot ================= */
+function onRoute(){
+  route = parseRoute(); if (route.name !== 'cards' && R && !R.queue.length) R = null;
+  if (route.name !== 'exam'){ clearInterval(examTimer); if (EXAM && EXAM.i < EXAM.order.length) EXAM = null; }
+  rerender(); window.scrollTo(0, 0);
+}
+var CITRUS_URL = 'https://amaerys.github.io/Citrus-Maxima/';
+var FROM_CITRUS = false;
+(function deepLink(){
+  try {
+    FROM_CITRUS = sessionStorage.getItem('lime.fromCitrus') === '1';
+    var qs = new URLSearchParams(location.search);
+    if (!qs.has('from') && !qs.has('do')) return;
+    if (qs.get('from') === 'citrus'){ FROM_CITRUS = true; sessionStorage.setItem('lime.fromCitrus', '1'); }
+    var d = qs.get('do'), nl = nextLesson(), map = {review:'#cards', cards:'#cards', lesson:nl ? '#lesson-' + nl.id : '#map', learn:nl ? '#lesson-' + nl.id : '#map', redo:'#redo', bench:'#bench', map:'#map', index:'#index', me:'#me', settings:'#me'};
+    var target = map[d] || location.hash || '#home';
+    history.replaceState(null, '', location.pathname + target);
+  } catch(e){}
+})();
+window.addEventListener('hashchange', onRoute);
+document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden'){ persistLocal(); cloudPush(); if (gValid()) syncAll(false); } });
+document.addEventListener('pointerdown', function(){ if (S.set.sound && !Snd.tick) Snd.ambience(true); }, {once:true});
+document.getElementById('logo').append(pix(LIME_ART, LIME_COL, 34, ''));
+applyTheme();
+onRoute();
+cloudInit();
+if (location.protocol === 'https:' && !/claude\.ai|claudeusercontent/.test(location.hostname)) loadScript('https://accounts.google.com/gsi/client', 15000).catch(function(){});
+if (gValid()) setTimeout(function(){ syncAll(false); }, 1500);
+setInterval(function(){ if (gValid() && document.visibilityState === 'visible') syncAll(false); }, 5 * 60000);
+window.__lime = {state:function(){ return S; }, mergeState:mergeState, buildStatus:buildStatus, G:G, syncAll:syncAll, schedule:schedule, Py:Py, lp:lp, LESSONS:LESSONS, CITY:CITY, DIST:DIST, unlocked:unlocked, redoPick:redoPick,
+  setState:function(s){ S = normalise(s); persistLocal(); rerender(); }};
+})();
+</script>

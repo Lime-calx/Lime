@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta charset="utf-8">
+<script src="../node_modules/brython/brython.min.js"></script>
+<script src="../node_modules/brython/brython_stdlib.js"></script>
+</head><body>
+<script>
+window.addEventListener('load', async () => {
+  try {
+    brython({indexedDB: false});
+    const patch = await (await fetch('patch.js')).text(); (0, eval)(patch);
+    const src = await (await fetch('runner.py')).text();
+    __BRYTHON__.runPythonSource(src, {id: 'runner'});
+  } catch (e) { window.__err = String(e); }
+});
+</script></body></html>
