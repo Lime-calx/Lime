@@ -1,0 +1,1147 @@
+<title>Lime</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&family=Press+Start+2P&display=swap">
+<style>
+/* Layout: one reading column, bottom tab bar on phones, a left rail on wide screens. Pixel borders, hard shadows, lime accent. */
+:root{
+  --bg:#EDF3DF; --panel:#FBFDF4; --ink:#17230E; --muted:#51613F; --line:#17230E;
+  --accent:#8BD122; --accent-ink:#17230E; --accent-soft:#D9EEAE;
+  --ok:#17803B; --ok-soft:#CBEAD2; --bad:#B8341D; --bad-soft:#F5D2CA; --warn:#8A5F00; --warn-soft:#F6E5AE;
+  --code-bg:#12200B; --code-ink:#E4F4C6; --code-dim:#8CA871; --shadow:#17230E;
+  --pix:'Press Start 2P', ui-monospace, Menlo, Consolas, monospace;
+  --body:'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono:'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B1206; --panel:#142010; --ink:#E6F2D0; --muted:#9CB286; --line:#5E8038;
+    --accent:#A3E636; --accent-ink:#0B1206; --accent-soft:#273D12;
+    --ok:#5BD58C; --ok-soft:#173A25; --bad:#FF907A; --bad-soft:#48211A; --warn:#F2C14E; --warn-soft:#3E3210;
+    --code-bg:#091004; --code-ink:#E4F4C6; --code-dim:#7F9A66; --shadow:#000; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B1206; --panel:#142010; --ink:#E6F2D0; --muted:#9CB286; --line:#5E8038;
+  --accent:#A3E636; --accent-ink:#0B1206; --accent-soft:#273D12;
+  --ok:#5BD58C; --ok-soft:#173A25; --bad:#FF907A; --bad-soft:#48211A; --warn:#F2C14E; --warn-soft:#3E3210;
+  --code-bg:#091004; --code-ink:#E4F4C6; --code-dim:#7F9A66; --shadow:#000; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:0 calc(88px + env(safe-area-inset-bottom,0px))}
+button,input,textarea{font:inherit;color:inherit}
+a{color:inherit}
+h1,h2,h3{text-wrap:balance;margin:0}
+code{font-family:var(--mono);font-size:.88em;background:var(--accent-soft);padding:.05em .3em;border:1px solid color-mix(in srgb,var(--line) 35%,transparent)}
+.app{max-width:1040px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+.top{display:flex;align-items:center;gap:12px;padding:14px 0 10px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--pix);font-size:18px;letter-spacing:.5px;text-decoration:none}
+.chips{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-family:var(--pix);font-size:9px;line-height:1.6;padding:6px 8px;border:2px solid var(--line);background:var(--panel);box-shadow:2px 2px 0 var(--shadow);white-space:nowrap}
+.chip b{color:inherit}
+.chip.hot{background:var(--accent);color:var(--accent-ink)}
+main{min-width:0;padding:6px 0 24px}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;background:var(--panel);border-top:2px solid var(--line);
+  padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+.nav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:7px 4px;text-decoration:none;font-family:var(--pix);font-size:8px;color:var(--muted);position:relative;border:2px solid transparent}
+.nav a svg{width:22px;height:22px}
+.nav a[aria-current="page"]{color:var(--accent-ink);background:var(--accent);border-color:var(--line)}
+.nav .badge{position:absolute;top:2px;right:calc(50% - 26px);background:var(--bad);color:#fff;font-size:8px;padding:2px 4px;border:2px solid var(--line)}
+@media (min-width:900px){
+  body{padding-bottom:40px}
+  .app{grid-template-columns:200px minmax(0,1fr);column-gap:28px}
+  .top{grid-column:1 / -1}
+  .nav{position:sticky;top:12px;bottom:auto;align-self:start;flex-direction:column;border:2px solid var(--line);box-shadow:3px 3px 0 var(--shadow);padding:8px;gap:4px;grid-row:2}
+  .nav a{flex-direction:row;gap:10px;font-size:10px;padding:10px 8px}
+  .nav .badge{position:static;margin-left:auto}
+  main{grid-row:2;grid-column:2;max-width:760px}
+}
+.card{background:var(--panel);border:2px solid var(--line);box-shadow:4px 4px 0 var(--shadow);padding:16px;margin:0 0 18px}
+.card.tight{padding:12px 14px}
+.h-pix{font-family:var(--pix);font-size:13px;line-height:1.8;margin:0 0 10px}
+.sub{color:var(--muted);font-size:15px}
+h1.title{font-family:var(--pix);font-size:17px;line-height:1.7;margin:4px 0 8px}
+h2.sec{font-family:var(--pix);font-size:12px;line-height:1.7;margin:26px 0 12px;display:flex;align-items:center;gap:10px}
+h2.sec::after{content:"";flex:1;border-top:2px dashed var(--line);opacity:.5}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-family:var(--pix);font-size:10px;line-height:1.4;padding:12px 14px;min-height:44px;
+  background:var(--accent);color:var(--accent-ink);border:2px solid var(--line);box-shadow:3px 3px 0 var(--shadow);text-decoration:none;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.btn:hover{filter:brightness(1.05)}
+.btn:active:not(:disabled){transform:translate(3px,3px);box-shadow:0 0 0 var(--shadow)}
+.btn:disabled{opacity:.55;cursor:default}
+.btn.ghost{background:var(--panel);color:var(--ink)}
+.btn.warn{background:var(--warn-soft);color:var(--ink)}
+.btn.danger{background:var(--bad-soft);color:var(--ink)}
+.btn.small{font-size:9px;padding:8px 10px;min-height:36px}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.bar{height:14px;border:2px solid var(--line);background:var(--panel);position:relative}
+.bar>i{position:absolute;inset:0 auto 0 0;background:var(--accent);display:block}
+.mission{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:2px dashed color-mix(in srgb,var(--line) 40%,transparent)}
+.mission:first-of-type{border-top:0}
+.mission .t{flex:1;min-width:0}
+.mission .t b{display:block}
+.tick{width:22px;height:22px;border:2px solid var(--line);flex:none;display:grid;place-items:center;font-family:var(--pix);font-size:11px;background:var(--panel)}
+.tick.on{background:var(--ok-soft);color:var(--ok)}
+.tick.part{background:var(--warn-soft)}
+details.track{margin:0 0 14px;background:var(--panel);border:2px solid var(--line);box-shadow:4px 4px 0 var(--shadow)}
+details.track>summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;gap:12px;align-items:center}
+details.track>summary::-webkit-details-marker{display:none}
+details.track>summary .tn{flex:1;min-width:0}
+details.track>summary .tn b{font-family:var(--pix);font-size:11px;line-height:1.7;display:block}
+details.track[open]>summary{border-bottom:2px solid var(--line);background:var(--accent-soft)}
+.tl{padding:6px 16px 14px}
+.tl a.les{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:2px dashed color-mix(in srgb,var(--line) 40%,transparent);text-decoration:none}
+.tl a.les:first-child{border-top:0}
+.tl .planned{display:flex;gap:10px;padding:6px 0;color:var(--muted);font-size:15px}
+.tl .planned::before{content:"";width:10px;height:10px;border:2px solid var(--muted);margin-top:7px;flex:none}
+.tag{font-family:var(--pix);font-size:8px;padding:4px 6px;border:2px solid var(--line);background:var(--panel);white-space:nowrap}
+.tag.live{background:var(--accent);color:var(--accent-ink)}
+.crumb{font-family:var(--pix);font-size:9px;text-decoration:none;color:var(--muted);display:inline-block;margin:6px 0 4px}
+.prose{max-width:66ch}
+.prose h3{font-family:var(--pix);font-size:11px;line-height:1.8;margin:30px 0 10px}
+.prose p{margin:0 0 14px}
+.prose ul{margin:0 0 14px;padding-left:22px}
+.prose li{margin:0 0 6px}
+.note{margin:16px 0;padding:12px 14px 12px 16px;border:2px solid var(--line);background:var(--panel);position:relative}
+.note .nl{font-family:var(--pix);font-size:8px;display:block;margin-bottom:6px;letter-spacing:.3px}
+.note.model{background:var(--accent-soft)}
+.note.trap{background:var(--bad-soft)}
+.note.tip{background:var(--warn-soft)}
+.note p{margin:0}
+.cell,.ex{margin:16px 0;border:2px solid var(--line);background:var(--code-bg);box-shadow:3px 3px 0 var(--shadow)}
+.ed{position:relative}
+.ta{display:block;width:100%;min-height:56px;resize:none;border:0;outline:0;background:transparent;color:var(--code-ink);font-family:var(--mono);font-size:14px;line-height:1.55;padding:12px 14px;white-space:pre;overflow:auto;tab-size:4}
+.ta:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+.keys{display:none;gap:4px;padding:6px;border-top:1px solid #2c4118;overflow-x:auto;background:#0e1a08}
+@media (pointer:coarse){.ed:focus-within .keys{display:flex}}
+.keys button{flex:none;min-width:38px;min-height:36px;background:#223616;color:var(--code-ink);border:1px solid #3f5a28;font-family:var(--mono);font-size:15px;cursor:pointer}
+.bar2{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 10px;background:var(--panel);border-top:2px solid var(--line)}
+.bar2 .sp{flex:1}
+.out{margin:0;padding:10px 14px;background:#0a1405;color:#C9E5A0;font-family:var(--mono);font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;border-top:2px solid var(--line);max-height:320px;overflow:auto}
+.out .err{color:#FF9B85;display:block}
+.out .dim{color:#7f9a66}
+.ex .hd{display:flex;gap:10px;align-items:center;background:var(--panel);padding:12px 14px;border-bottom:2px solid var(--line);flex-wrap:wrap}
+.ex .hd b{font-family:var(--pix);font-size:10px;line-height:1.7;flex:1;min-width:0}
+.ex .pr{background:var(--panel);padding:12px 14px;border-bottom:2px solid var(--line)}
+.ex .pr p{margin:0}
+.res{list-style:none;margin:0;padding:10px 14px;background:var(--panel);border-top:2px solid var(--line)}
+.res li{display:flex;gap:10px;padding:5px 0;align-items:flex-start}
+.res .m{font-family:var(--pix);font-size:10px;width:18px;flex:none;margin-top:4px}
+.res .ok .m{color:var(--ok)}.res .no .m{color:var(--bad)}
+.res .why{display:block;font-size:14.5px;color:var(--muted)}
+.box{padding:10px 14px;background:var(--warn-soft);border-top:2px solid var(--line);font-size:15.5px}
+.box.sol{background:var(--panel)}
+.box pre{margin:8px 0 0;padding:10px;background:var(--code-bg);color:var(--code-ink);font-family:var(--mono);font-size:13.5px;overflow:auto;border:2px solid var(--line)}
+.win{background:var(--ok-soft);padding:10px 14px;border-top:2px solid var(--line);font-family:var(--pix);font-size:10px;line-height:1.8}
+.pred{margin:16px 0;border:2px solid var(--line);background:var(--panel);box-shadow:3px 3px 0 var(--shadow)}
+.pred pre.src{margin:0;padding:12px 14px;background:var(--code-bg);color:var(--code-ink);font-family:var(--mono);font-size:14px;overflow:auto;line-height:1.55}
+.pred .in{padding:10px 14px}
+.pred textarea{width:100%;min-height:68px;font-family:var(--mono);font-size:14px;background:var(--bg);border:2px solid var(--line);padding:8px 10px;resize:vertical;white-space:pre}
+.pred .fb{padding:10px 14px;border-top:2px solid var(--line)}
+.pred .fb.ok{background:var(--ok-soft)}.pred .fb.no{background:var(--bad-soft)}
+.pred .fb pre{margin:6px 0;font-family:var(--mono);font-size:13.5px;white-space:pre-wrap}
+.goals{margin:8px 0 0;padding-left:20px}
+.goals li{margin:2px 0}
+.pstrip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0 4px}
+.pstrip div{font-family:var(--pix);font-size:8px;line-height:1.8}
+.pstrip .bar{margin-top:6px;height:12px}
+.fc{perspective:900px;margin:0 0 14px}
+.fcard{min-height:230px;background:var(--panel);border:2px solid var(--line);box-shadow:4px 4px 0 var(--shadow);padding:20px;display:flex;flex-direction:column;justify-content:center;gap:14px;cursor:pointer;touch-action:pan-y;transition:transform .12s}
+.fcard .side{font-family:var(--pix);font-size:8px;color:var(--muted)}
+.fcard .q{font-size:20px;line-height:1.45}
+.fcard .a{font-size:18px;line-height:1.5;border-top:2px dashed var(--line);padding-top:14px}
+.rate{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.rate .btn{flex-direction:column;gap:5px;padding:10px 4px}
+.rate .btn small{font-family:var(--body);font-size:12px;opacity:.85}
+.rate .again{background:var(--bad-soft)}.rate .hard{background:var(--warn-soft)}.rate .good{background:var(--accent)}.rate .easy{background:var(--ok-soft)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.stat{border:2px solid var(--line);background:var(--panel);padding:10px}
+.stat b{display:block;font-family:var(--pix);font-size:15px;line-height:1.5}
+.stat span{font-size:13.5px;color:var(--muted)}
+.spark{display:flex;align-items:flex-end;gap:4px;height:90px;border-bottom:2px solid var(--line);padding-top:6px}
+.spark i{flex:1;background:var(--accent);border:2px solid var(--line);border-bottom:0;min-height:2px;display:block}
+.spark i.z{background:transparent;border-color:transparent;border-top:2px solid var(--line);min-height:0;height:0}
+.lab{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-top:4px}
+pre.json{margin:10px 0;padding:10px;background:var(--code-bg);color:var(--code-ink);font-family:var(--mono);font-size:12.5px;max-height:240px;overflow:auto;border:2px solid var(--line)}
+.field{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0}
+.field label{min-width:150px}
+.field input[type=number],.field select,.field input[type=text]{background:var(--bg);border:2px solid var(--line);padding:8px 10px;min-height:40px;width:110px}
+.field input[type=text]{width:100%;max-width:340px}
+.seg{display:inline-flex;border:2px solid var(--line)}
+.seg button{font-family:var(--pix);font-size:9px;padding:10px 12px;background:var(--panel);border:0;border-right:2px solid var(--line);cursor:pointer;min-height:40px}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+textarea.paste{width:100%;min-height:90px;font-family:var(--mono);font-size:12.5px;background:var(--bg);border:2px solid var(--line);padding:8px}
+.empty{padding:26px 10px;text-align:center}
+#toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:40;display:flex;flex-direction:column;gap:8px;width:min(92vw,420px);pointer-events:none}
+@media (min-width:900px){#toasts{bottom:24px}}
+.toast{pointer-events:auto;background:var(--accent);color:var(--accent-ink);border:2px solid var(--line);box-shadow:3px 3px 0 var(--shadow);padding:10px 12px;font-family:var(--pix);font-size:9px;line-height:1.7}
+#modal{position:fixed;inset:0;z-index:60;background:rgba(8,14,4,.62);display:flex;align-items:center;justify-content:center;padding:20px}
+.dlg{background:var(--panel);border:2px solid var(--line);box-shadow:6px 6px 0 var(--shadow);max-width:430px;width:100%;padding:18px}
+.dlg h2{font-family:var(--pix);font-size:12px;line-height:1.7;margin-bottom:10px}
+.dlg .row{justify-content:flex-end;margin-top:16px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app" id="app">
+  <header class="top">
+    <a class="brand" href="#home" aria-label="Lime home"><span id="logo"></span><span>LIME</span></a>
+    <div class="chips" id="chips"></div>
+  </header>
+  <nav class="nav" id="nav" aria-label="Main"></nav>
+  <main id="view"></main>
+</div>
+<div id="toasts" aria-live="polite"></div>
+<div id="modal" hidden></div>
+
+<script>
+(function(){
+'use strict';
+var CONTENT = /*__CONTENT__*/null;
+var RUNNER_SRC = /*__RUNNER__*/null;
+var APP = {id:'lime', title:'Lime', icon:'🍋‍🟩', color:'#8BD122', version:'1.0.0'};
+var BRYTHON_BASE = window.__LIME_BRYTHON_BASE || 'https://cdn.jsdelivr.net/npm/brython@3.14.3/';
+
+/* ---------- tiny helpers ---------- */
+function h(tag, attrs){
+  var el = document.createElement(tag);
+  if (attrs) for (var k in attrs){
+    var v = attrs[k];
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k.slice(0,2) === 'on') el.addEventListener(k.slice(2), v);
+    else if (k === 'text') el.textContent = v;
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (var i = 2; i < arguments.length; i++) add(el, arguments[i]);
+  return el;
+}
+function add(el, kid){
+  if (kid == null || kid === false) return;
+  if (Array.isArray(kid)) { kid.forEach(function(x){ add(el, x); }); return; }
+  el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+}
+function $(sel, root){ return (root || document).querySelector(sel); }
+function pad(n){ return (n < 10 ? '0' : '') + n; }
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+function keyOf(d){ d = d || new Date(); return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+function dayNum(d){ d = d || new Date(); return Math.floor((d.getTime() - d.getTimezoneOffset()*60000) / 86400000); }
+function fmtDate(key){ var p = key.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+function fmtDateTime(ms){ var d = new Date(ms); return pad(d.getDate()) + '/' + pad(d.getMonth()+1) + '/' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+function shuffle(a){ for (var i = a.length-1; i > 0; i--){ var j = Math.floor(Math.random()*(i+1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+function canon(v){ if (Array.isArray(v)) return v.map(canon); if (v && typeof v === 'object'){ var o = {}; Object.keys(v).sort().forEach(function(k){ o[k] = canon(v[k]); }); return o; } return v; }
+function same(a, b){ return JSON.stringify(canon(a)) === JSON.stringify(canon(b)); }
+var LS = {
+  get: function(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set: function(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
+};
+
+/* pixel art from strings */
+function pix(rows, colors, size, label){
+  var NS = 'http://www.w3.org/2000/svg';
+  var svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 ' + rows[0].length + ' ' + rows.length);
+  svg.setAttribute('shape-rendering', 'crispEdges');
+  svg.setAttribute('width', size); svg.setAttribute('height', size);
+  if (label) { svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', label); } else svg.setAttribute('aria-hidden', 'true');
+  rows.forEach(function(row, y){
+    for (var x = 0; x < row.length; x++){
+      var c = colors[row[x]]; if (!c) continue;
+      var r = document.createElementNS(NS, 'rect');
+      r.setAttribute('x', x); r.setAttribute('y', y); r.setAttribute('width', 1); r.setAttribute('height', 1); r.setAttribute('fill', c);
+      svg.appendChild(r);
+    }
+  });
+  return svg;
+}
+var LIME_ART = ['......ss....','.....ssl....','...ggggggg..','..gGGGGGGGg.','.gGGGwGGGGGg','.gGGwGGGGGGg','.gGGGGGGGGGg','.gGGGGGGGGGg','..gGGGGGGGg.','...gGGGGGg..','....ggggg...','............'];
+var LIME_COL = {g:'#4E8F12', G:'#8BD122', w:'#EAF9BA', s:'#7A5B2E', l:'#5DAA1A'};
+var ICONS = {
+  home: ['...11...','..1111..','.111111.','11111111','.1....1.','.1.11.1.','.1.11.1.','.111111.'],
+  learn: ['.111111.','1.1..1.1','1.1..1.1','1.1..1.1','1.1..1.1','1.1..1.1','1111111.','........'],
+  cards: ['........','.111111.','1......1','1.1111.1','1......1','1.11...1','1......1','.111111.'],
+  me: ['..1111..','.111111.','.111111.','..1111..','.111111.','11111111','11111111','11....11']
+};
+function icon(name){ return pix(ICONS[name], {1:'currentColor'}, 22); }
+
+/* inline formatting: `code`, **bold**, *italic* */
+function fmt(text){
+  var frag = document.createDocumentFragment();
+  text.split(/(`[^`]*`)/).forEach(function(p){
+    if (p.length >= 2 && p[0] === '`' && p[p.length-1] === '`'){ frag.append(h('code', null, p.slice(1, -1))); return; }
+    var re = /(\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/g, last = 0, m;
+    while ((m = re.exec(p))){
+      if (m.index > last) frag.append(p.slice(last, m.index));
+      var t = m[0];
+      frag.append(t.slice(0,2) === '**' ? h('strong', null, t.slice(2, -2)) : h('em', null, t.slice(1, -1)));
+      last = m.index + t.length;
+    }
+    if (last < p.length) frag.append(p.slice(last));
+  });
+  return frag;
+}
+function paras(text){
+  return text.split(/\n\s*\n/).map(function(chunk){
+    var lines = chunk.split('\n').filter(function(l){ return l.trim(); });
+    if (lines.length && lines.every(function(l){ return l.indexOf('- ') === 0; }))
+      return h('ul', null, lines.map(function(l){ return h('li', null, fmt(l.slice(2))); }));
+    return h('p', null, fmt(chunk.replace(/\n/g, ' ')));
+  });
+}
+
+/* ---------- content ---------- */
+var TRACKS = CONTENT.tracks;
+var trackIdx = {}; TRACKS.forEach(function(t, i){ trackIdx[t.id] = i; });
+var LESSONS = CONTENT.lessons.slice().sort(function(a, b){ return a.track === b.track ? a.n - b.n : trackIdx[a.track] - trackIdx[b.track]; });
+var LBY = {}; LESSONS.forEach(function(L){ LBY[L.id] = L; });
+
+/* ---------- state ---------- */
+function blank(){ return {v:1, epoch:0, updatedAt:0, done:{}, pred:{}, read:{}, cards:{}, days:{}, set:{theme:'auto', newPerDay:8, goalXp:40, appUrl:''}}; }
+function load(){
+  try {
+    var raw = LS.get('lime.v1');
+    if (raw){ var o = JSON.parse(raw), b = blank(); b.set = Object.assign(b.set, o.set || {}); return Object.assign(b, o, {set:b.set}); }
+  } catch(e){}
+  return blank();
+}
+var S = load();
+var drafts = {}; try { drafts = JSON.parse(LS.get('lime.drafts') || '{}') || {}; } catch(e){}
+var draftTimer = null;
+function setDraft(k, v){ drafts[k] = v; clearTimeout(draftTimer); draftTimer = setTimeout(function(){ LS.set('lime.drafts', JSON.stringify(drafts)); }, 600); }
+function persistLocal(){ LS.set('lime.v1', JSON.stringify(S)); }
+function save(){ S.updatedAt = Date.now(); persistLocal(); queueSync(); }
+function applyTheme(){ var r = document.documentElement; if (S.set.theme === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', S.set.theme); }
+
+function mergeState(a, b){
+  if (!b || typeof b !== 'object') return a;
+  if ((b.epoch || 0) < (a.epoch || 0)) return a;
+  if ((b.epoch || 0) > (a.epoch || 0)) { var nb = Object.assign(blank(), b); nb.set = a.set; return nb; }
+  var out = JSON.parse(JSON.stringify(a)), k;
+  function early(map, other){ for (k in (other || {})){ if (!map[k] || (other[k].t || 0) < (map[k].t || 0)) map[k] = other[k]; } }
+  early(out.done, b.done);
+  for (k in (b.pred || {})){ var p = out.pred[k], q = b.pred[k]; if (!p || (q.ok && !p.ok) || (q.ok === p.ok && (q.t || 0) < (p.t || 0))) out.pred[k] = q; }
+  for (k in (b.read || {})){ if (!out.read[k] || b.read[k] < out.read[k]) out.read[k] = b.read[k]; }
+  for (k in (b.cards || {})){ var c = out.cards[k], d = b.cards[k]; if (!c || (d.last || 0) > (c.last || 0)) out.cards[k] = d; }
+  for (k in (b.days || {})){
+    var x = out.days[k] || (out.days[k] = {}), y = b.days[k];
+    ['xp','ex','pred','cards','newc'].forEach(function(f){ x[f] = Math.max(x[f] || 0, y[f] || 0); });
+  }
+  out.updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0);
+  return out;
+}
+
+/* ---------- progress maths ---------- */
+function totalXp(){ var n = 0; for (var k in S.days) n += S.days[k].xp || 0; return n; }
+function levelOf(xp){ return 1 + Math.floor(Math.sqrt(xp / 40)); }
+function levelBounds(l){ return [40*(l-1)*(l-1), 40*l*l]; }
+function todayXp(){ return (S.days[keyOf()] || {}).xp || 0; }
+function calcStreak(){
+  var n = 0, d = new Date();
+  if (!((S.days[keyOf(d)] || {}).xp > 0)) d.setDate(d.getDate() - 1);
+  while ((S.days[keyOf(d)] || {}).xp > 0){ n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+function lp(L){
+  var ex = L.exercises.filter(function(e){ return S.done[L.id + ':' + e.id]; }).length;
+  var pr = L.predict.filter(function(p, i){ return S.pred[L.id + ':p' + i]; }).length;
+  return {ex:ex, exN:L.exercises.length, pr:pr, prN:L.predict.length, started:!!S.read[L.id], done: ex === L.exercises.length && pr === L.predict.length};
+}
+function nextLesson(){ for (var i = 0; i < LESSONS.length; i++) if (!lp(LESSONS[i]).done) return LESSONS[i]; return null; }
+function award(n, field){
+  var k = keyOf(), d = S.days[k] || (S.days[k] = {xp:0, ex:0, pred:0, cards:0, newc:0});
+  var before = levelOf(totalXp());
+  d.xp += n; if (field) d[field] = (d[field] || 0) + 1;
+  save();
+  if (levelOf(totalXp()) > before) toast('LEVEL ' + levelOf(totalXp()) + ' REACHED');
+  chrome();
+}
+
+/* spaced repetition (interval ladder with ease, four buttons) */
+function schedule(st, rating, t){
+  var s = st ? Object.assign({}, st) : {ease:2.5, ivl:0, reps:0, lapses:0};
+  if (!st){ s.ivl = [0, 1, 2, 5][rating]; }
+  else if (rating === 0){ s.lapses++; s.ease = Math.max(1.3, s.ease - 0.2); s.ivl = 1; }
+  else if (rating === 1){ s.ivl = Math.max(s.ivl + 1, Math.round(s.ivl * 1.2)); s.ease = Math.max(1.3, s.ease - 0.15); }
+  else if (rating === 2){ s.ivl = Math.max(s.ivl + 1, Math.round(s.ivl * s.ease)); }
+  else { s.ivl = Math.max(s.ivl + 2, Math.round(s.ivl * s.ease * 1.3)); s.ease += 0.15; }
+  s.reps++; s.due = t + s.ivl; s.last = Date.now();
+  return s;
+}
+function ivlLabel(r, st, rating){
+  if (rating === 0) return 'again';
+  var n = schedule(st, rating, 0).ivl;
+  return n < 30 ? n + 'd' : n < 365 ? Math.round(n/30) + 'mo' : (n/365).toFixed(1) + 'y';
+}
+function cardList(){
+  var out = [];
+  LESSONS.forEach(function(L){
+    if (!S.read[L.id]) return;
+    L.cards.forEach(function(c, i){ var id = L.id + ':c' + i; out.push({id:id, lesson:L, f:c.f, b:c.b, st:S.cards[id]}); });
+  });
+  return out;
+}
+function newAvail(list){
+  var cap = Math.max(0, (S.set.newPerDay || 0) - ((S.days[keyOf()] || {}).newc || 0));
+  return Math.min(cap, list.filter(function(c){ return !c.st; }).length);
+}
+function dueNow(){ var t = dayNum(), l = cardList(); return l.filter(function(c){ return c.st && c.st.due <= t; }).length; }
+function dueTotal(){ var l = cardList(); return dueNow() + newAvail(l); }
+
+/* ---------- UI chrome: toasts, dialogs ---------- */
+function toast(msg){
+  var el = h('div', {class:'toast', role:'status'}, msg);
+  var tb = $('#toasts'); tb.append(el); while (tb.children.length > 2) tb.firstChild.remove();
+  setTimeout(function(){ el.remove(); }, 3200);
+}
+function ask(opts){
+  return new Promise(function(resolve){
+    var m = $('#modal'), prev = document.activeElement;
+    function close(v){ m.hidden = true; m.replaceChildren(); document.removeEventListener('keydown', onKey); if (prev && prev.focus) prev.focus(); resolve(v); }
+    function onKey(e){ if (e.key === 'Escape') close(false); }
+    var ok = h('button', {class:'btn ' + (opts.danger ? 'danger' : ''), onclick:function(){ close(true); }}, opts.ok || 'OK');
+    var no = opts.cancel === false ? null : h('button', {class:'btn ghost', onclick:function(){ close(false); }}, opts.cancel || 'Cancel');
+    m.replaceChildren(h('div', {class:'dlg', role:'dialog', 'aria-modal':'true', 'aria-label':opts.title},
+      h('h2', null, opts.title), h('div', null, typeof opts.text === 'string' ? h('p', null, opts.text) : opts.text),
+      h('div', {class:'row'}, no, ok)));
+    m.hidden = false; document.addEventListener('keydown', onKey); (no || ok).focus();
+  });
+}
+function copyText(text, anchor){
+  function fallback(){
+    var ta = h('textarea', {class:'paste', readonly:true}); ta.value = text;
+    var box = h('div', null, h('p', null, 'Select the text and copy it.'), ta);
+    ask({title:'Copy', text:box, ok:'Done', cancel:false}); setTimeout(function(){ ta.select(); }, 50);
+  }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function(){ toast('COPIED'); }, fallback);
+    else fallback();
+  } catch(e){ fallback(); }
+}
+
+/* ---------- Python engine (Brython in the page) ---------- */
+function loadScript(src, ms){
+  return new Promise(function(resolve, reject){
+    var s = document.createElement('script'), done = false;
+    var timer = setTimeout(function(){ if (!done){ done = true; reject(new Error('Timed out loading ' + src)); } }, ms || 60000);
+    s.src = src; s.async = true;
+    s.onload = function(){ if (!done){ done = true; clearTimeout(timer); resolve(); } };
+    s.onerror = function(){ if (!done){ done = true; clearTimeout(timer); reject(new Error('Could not load ' + src)); } };
+    document.head.appendChild(s);
+  });
+}
+var Py = {
+  state:'idle', p:null, err:'',
+  load:function(){
+    var self = this;
+    if (self.p) return self.p;
+    self.state = 'loading';
+    self.p = (async function(){
+      await loadScript(BRYTHON_BASE + 'brython.min.js');
+      await loadScript(BRYTHON_BASE + 'brython_stdlib.js');
+      window.brython({indexedDB:false});
+      window.__BRYTHON__.runPythonSource(RUNNER_SRC, {id:'runner'});
+      for (var i = 0; i < 200 && !window.pyReady; i++) await sleep(50);
+      if (!window.pyReady) throw new Error('The Python runner did not start.');
+      self.state = 'ready';
+    })().catch(function(e){ self.state = 'error'; self.err = String((e && e.message) || e); self.p = null; throw e; });
+    return self.p;
+  },
+  run:async function(code, tests){
+    await this.load();
+    await sleep(20);
+    return JSON.parse(window.pyRun(code, tests || ''));
+  }
+};
+function setOut(el, r){
+  el.hidden = false; el.replaceChildren();
+  if (typeof r === 'string'){ el.append(h('span', {class:'dim'}, r)); return; }
+  if (r.out) el.append(r.out);
+  if (r.error) el.append(h('span', {class:'err'}, r.error));
+  if (!r.out && !r.error) el.append(h('span', {class:'dim'}, '(no output)'));
+}
+async function runInto(code, tests, outEl, btn){
+  if (btn) btn.disabled = true;
+  setOut(outEl, Py.state === 'ready' ? 'Running...' : 'Starting Python. The first run downloads the engine...');
+  var r;
+  try { r = await Py.run(code, tests); }
+  catch(e){ setOut(outEl, {out:'', error:'Python could not start in this view. ' + Py.err}); if (btn) btn.disabled = false; return null; }
+  setOut(outEl, r);
+  if (btn) btn.disabled = false;
+  return r;
+}
+
+/* ---------- code editor ---------- */
+function editor(o){
+  var ta = h('textarea', {class:'ta', spellcheck:'false', autocapitalize:'off', autocomplete:'off', autocorrect:'off', 'aria-label':o.label || 'Python code'});
+  ta.value = o.value;
+  function fit(){ ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight + 2, 560) + 'px'; }
+  function insert(txt){ var s = ta.selectionStart, e = ta.selectionEnd; ta.setRangeText(txt, s, e, 'end'); ta.dispatchEvent(new Event('input')); }
+  ta.addEventListener('input', function(){ fit(); if (o.onInput) o.onInput(ta.value); });
+  ta.addEventListener('focus', function(){ Py.load().catch(function(){}); }, {once:true});
+  ta.addEventListener('keydown', function(e){
+    if (e.key === 'Tab'){ e.preventDefault(); insert('    '); }
+    else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter'){ e.preventDefault(); if (o.onRun) o.onRun(); }
+    else if (e.key === 'Enter' && !e.shiftKey && !e.altKey){
+      e.preventDefault();
+      var v = ta.value, s = ta.selectionStart, ls = v.lastIndexOf('\n', s - 1) + 1, line = v.slice(ls, s);
+      var ind = (line.match(/^[ \t]*/) || [''])[0];
+      if (/:\s*$/.test(line)) ind += '    ';
+      insert('\n' + ind);
+    }
+  });
+  var keys = h('div', {class:'keys'}, ['Tab', ':', '(', ')', '[', ']', '{', '}', '"', "'", '_', '=', '#'].map(function(k){
+    return h('button', {type:'button', 'aria-label':k === 'Tab' ? 'Insert indent' : 'Insert ' + k,
+      onpointerdown:function(e){ e.preventDefault(); },
+      onclick:function(){ ta.focus(); insert(k === 'Tab' ? '    ' : k); }}, k === 'Tab' ? 'Tab' : k);
+  }));
+  var el = h('div', {class:'ed'}, ta, keys);
+  requestAnimationFrame(fit); setTimeout(fit, 120);
+  return {el:el, ta:ta, fit:fit, get value(){ return ta.value; }, set value(v){ ta.value = v; fit(); if (o.onInput) o.onInput(v); }};
+}
+
+/* runnable example in a lesson */
+function codeCell(src){
+  var out = h('pre', {class:'out', hidden:true, 'aria-live':'polite'});
+  var ed = editor({value:src, label:'Example code', onRun:function(){ run.click(); }});
+  var run = h('button', {class:'btn small', onclick:function(){ runInto(ed.value, '', out, run); }}, 'RUN');
+  var reset = h('button', {class:'btn small ghost', onclick:function(){ ed.value = src; out.hidden = true; }}, 'RESET');
+  return h('div', {class:'cell'}, ed.el, h('div', {class:'bar2'}, run, reset, h('span', {class:'sp'})), out);
+}
+
+/* ---------- lesson blocks ---------- */
+var NOTE_LABEL = {model:'MENTAL MODEL', trap:'WATCH OUT', tip:'TIP'};
+function renderBlocks(L){
+  var wrap = h('div', {class:'prose'});
+  L.blocks.forEach(function(b){
+    if (b.t === 'h') wrap.append(h('h3', null, b.x));
+    else if (b.t === 'p') paras(b.x).forEach(function(n){ wrap.append(n); });
+    else if (b.t === 'code') wrap.append(codeCell(b.x));
+    else if (b.t === 'note') wrap.append(h('div', {class:'note ' + b.k}, h('span', {class:'nl'}, NOTE_LABEL[b.k]), paras(b.x)));
+  });
+  return wrap;
+}
+
+/* exercise */
+function exercise(L, ex){
+  var key = L.id + ':' + ex.id;
+  var attempts = 0, hinted = false, peeked = false;
+  var out = h('pre', {class:'out', hidden:true, 'aria-live':'polite'});
+  var res = h('ul', {class:'res', hidden:true});
+  var status = h('span', {class:'tag'}, S.done[key] ? 'SOLVED' : ex.kind === 'fix' ? 'FIX IT' : 'WRITE IT');
+  if (S.done[key]) status.classList.add('live');
+  var winBox = h('div', {class:'win', hidden:!S.done[key]}, S.done[key] ? 'SOLVED. ' + (S.done[key].n === 1 ? 'First try.' : S.done[key].n + ' tries.') : '');
+  var ed = editor({value:drafts[key] != null ? drafts[key] : ex.starter, label:'Your code for ' + ex.title,
+    onInput:function(v){ setDraft(key, v); }, onRun:function(){ chk.click(); }});
+  var chk, runBtn;
+  var hintBox = h('div', {class:'box', hidden:true}, h('strong', null, 'Hint: '), fmt(ex.hint));
+  var solBox = h('div', {class:'box sol', hidden:true});
+  async function check(){
+    chk.disabled = runBtn.disabled = true; attempts++;
+    setOut(out, Py.state === 'ready' ? 'Checking...' : 'Starting Python. The first run downloads the engine...');
+    var r;
+    try { r = await Py.run(ed.value, ex.tests); }
+    catch(e){ setOut(out, {out:'', error:'Python could not start in this view. ' + Py.err}); chk.disabled = runBtn.disabled = false; return; }
+    chk.disabled = runBtn.disabled = false;
+    if (r.out || r.error) setOut(out, r); else out.hidden = true;
+    res.replaceChildren();
+    if (r.error){ res.hidden = true; return; }
+    res.hidden = false;
+    var all = r.results.length > 0;
+    r.results.forEach(function(x){
+      if (!x.ok) all = false;
+      res.append(h('li', {class:x.ok ? 'ok' : 'no'}, h('span', {class:'m'}, x.ok ? 'OK' : 'NO'),
+        h('span', null, x.label, (!x.ok && (x.hint || x.detail)) ? h('span', {class:'why'}, [x.hint, x.detail].filter(Boolean).join(' ')) : null)));
+    });
+    if (all) solved();
+  }
+  function solved(){
+    var first = !S.done[key];
+    if (first){
+      S.done[key] = {t:Date.now(), n:attempts};
+      var xp = peeked ? 5 : 20 + (attempts === 1 && !hinted ? 10 : 0);
+      award(xp, 'ex');
+      toast('SOLVED +' + xp + ' XP');
+      afterProgress(L);
+    }
+    status.textContent = 'SOLVED'; status.classList.add('live');
+    winBox.hidden = false; winBox.textContent = 'SOLVED. ' + (S.done[key].n === 1 ? 'First try.' : S.done[key].n + ' tries.');
+    refreshHead(L);
+  }
+  runBtn = h('button', {class:'btn small ghost', onclick:function(){ runInto(ed.value, '', out, runBtn); res.hidden = true; }}, 'RUN');
+  chk = h('button', {class:'btn small', onclick:check}, 'CHECK');
+  /* hold to peek at the hint; a quick tap keeps it open */
+  var t0 = 0;
+  var hintBtn = h('button', {class:'btn small warn', 'aria-expanded':'false',
+    onpointerdown:function(){ t0 = Date.now(); hinted = true; hintBox.hidden = false; },
+    onpointerup:function(){ if (Date.now() - t0 > 350) hintBox.hidden = true; else if (hintBtn.dataset.open === '1'){ hintBox.hidden = true; hintBtn.dataset.open = '0'; } else hintBtn.dataset.open = '1'; hintBtn.setAttribute('aria-expanded', String(!hintBox.hidden)); },
+    onpointerleave:function(){ if (hintBtn.dataset.open !== '1') hintBox.hidden = true; },
+    onkeydown:function(e){ if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); hinted = true; hintBox.hidden = !hintBox.hidden; hintBtn.setAttribute('aria-expanded', String(!hintBox.hidden)); } }}, 'HINT');
+  var solBtn = h('button', {class:'btn small ghost', onclick:async function(){
+    if (solBox.hidden){
+      var yes = await ask({title:'Show the solution?', text:'You learn more by trying first. If you look, this exercise earns only 5 XP.', ok:'Show it'});
+      if (!yes) return;
+      peeked = true; solBox.hidden = false;
+      solBox.replaceChildren(h('strong', null, 'One solution'), h('pre', null, ex.solution));
+    } else solBox.hidden = true;
+  }}, 'SOLUTION');
+  var resetBtn = h('button', {class:'btn small ghost', onclick:async function(){
+    var yes = await ask({title:'Reset your code?', text:'This puts the starting code back and discards your edits.', ok:'Reset', danger:true});
+    if (yes){ ed.value = ex.starter; out.hidden = true; res.hidden = true; }
+  }}, 'RESET');
+  return h('div', {class:'ex', id:'ex-' + ex.id},
+    h('div', {class:'hd'}, h('b', null, ex.title), status),
+    h('div', {class:'pr'}, paras(ex.prompt)),
+    ed.el,
+    h('div', {class:'bar2'}, chk, runBtn, hintBtn, solBtn, h('span', {class:'sp'}), resetBtn),
+    hintBox, solBox, out, res, winBox);
+}
+
+/* predict the output */
+function normOut(s){ return s.replace(/\r/g, '').split('\n').map(function(l){ return l.replace(/\s+$/, ''); }).join('\n').trim(); }
+function predict(L, p, i){
+  var key = L.id + ':p' + i;
+  var ta = h('textarea', {rows:3, spellcheck:'false', 'aria-label':'What does this print?', placeholder:'Type exactly what is printed. Use a new line for each line.'});
+  var fb = h('div', {class:'fb', hidden:true});
+  var tries = 0;
+  function show(ok, revealed){
+    fb.hidden = false; fb.className = 'fb ' + (ok ? 'ok' : 'no');
+    fb.replaceChildren(
+      h('strong', null, ok ? 'Correct.' : revealed ? 'The output is:' : 'Not quite.'),
+      (ok || revealed) ? h('pre', null, p.ans) : null,
+      (ok || revealed) ? h('p', null, fmt(p.why)) : h('p', null, 'Trace the code line by line, then try again.'));
+  }
+  var chk = h('button', {class:'btn small', onclick:function(){
+    if (!ta.value.trim()) return;
+    tries++;
+    var ok = normOut(ta.value) === normOut(p.ans);
+    if (ok){
+      if (!S.pred[key] || !S.pred[key].ok){
+        var first = !S.pred[key];
+        S.pred[key] = {ok:true, t:Date.now(), n:tries};
+        if (first){ award(5, 'pred'); toast('CORRECT +5 XP'); } else save();
+        afterProgress(L); refreshHead(L);
+      }
+    }
+    show(ok, false);
+  }}, 'CHECK');
+  var rev = h('button', {class:'btn small ghost', onclick:function(){
+    if (!S.pred[key]){ S.pred[key] = {ok:false, revealed:true, t:Date.now()}; save(); afterProgress(L); refreshHead(L); }
+    show(false, true);
+  }}, 'SHOW ANSWER');
+  var out = h('pre', {class:'out', hidden:true});
+  var runIt = h('button', {class:'btn small ghost', onclick:function(){ runInto(p.code, '', out, runIt); }}, 'RUN IT');
+  var cur = S.pred[key];
+  if (cur){ show(cur.ok, !cur.ok); }
+  return h('div', {class:'pred'}, h('pre', {class:'src'}, p.code), h('div', {class:'in'}, ta, h('div', {class:'row', style:'margin-top:8px'}, chk, rev, runIt)), out, fb);
+}
+
+/* lesson page */
+var headRefs = null;
+function refreshHead(L){
+  if (!headRefs || headRefs.L !== L) return;
+  var p = lp(L);
+  headRefs.ex.textContent = 'EXERCISES ' + p.ex + '/' + p.exN; headRefs.exBar.style.width = (100 * p.ex / p.exN) + '%';
+  headRefs.pr.textContent = 'PREDICTIONS ' + p.pr + '/' + p.prN; headRefs.prBar.style.width = (100 * p.pr / p.prN) + '%';
+  headRefs.state.textContent = p.done ? 'LESSON COMPLETE' : 'IN PROGRESS';
+}
+function afterProgress(L){
+  var p = lp(L);
+  if (p.done && !S.read[L.id + ':done']){
+    S.read[L.id + ':done'] = Date.now(); award(30, null); toast('LESSON COMPLETE +30 XP');
+  }
+}
+function lessonView(L){
+  var p = lp(L), first = !S.read[L.id];
+  if (first){ S.read[L.id] = Date.now(); save(); toast(L.cards.length + ' FLASHCARDS ADDED'); chrome(); }
+  var track = TRACKS[trackIdx[L.track]];
+  var exBar = h('i'), prBar = h('i'), ex = h('div', null), pr = h('div', null), state = h('div', null);
+  headRefs = {L:L, ex:ex, exBar:exBar, pr:pr, prBar:prBar, state:state};
+  var head = h('div', {class:'card'},
+    h('a', {class:'crumb', href:'#learn'}, '< ' + track.name.toUpperCase()),
+    h('h1', {class:'title'}, L.n + '. ' + L.title),
+    h('div', {class:'sub'}, '~' + L.minutes + ' min. ' + L.summary),
+    h('ul', {class:'goals'}, L.goals.map(function(g){ return h('li', null, g); })),
+    h('div', {class:'pstrip'}, h('div', null, ex, h('div', {class:'bar'}, exBar)), h('div', null, pr, h('div', {class:'bar'}, prBar)), h('div', null, state)));
+  var view = h('div', null, head,
+    h('h2', {class:'sec'}, 'LEARN'), renderBlocks(L),
+    h('h2', {class:'sec'}, 'PREDICT THE OUTPUT'),
+    h('p', {class:'sub'}, 'Before running anything, work out what each program prints. Guessing then checking is how you build an accurate mental model.'),
+    L.predict.map(function(q, i){ return predict(L, q, i); }),
+    h('h2', {class:'sec'}, 'PRACTICE'),
+    h('p', {class:'sub'}, 'Press CHECK to run your code against tests. Hold HINT to peek. Ctrl+Enter also checks.'),
+    L.exercises.map(function(e){ return exercise(L, e); }));
+  var idx = LESSONS.indexOf(L), nx = LESSONS[idx + 1], pv = LESSONS[idx - 1];
+  view.append(h('div', {class:'row', style:'margin:26px 0'},
+    pv ? h('a', {class:'btn ghost', href:'#lesson-' + pv.id}, '< ' + pv.n + '. ' + pv.title) : null,
+    nx ? h('a', {class:'btn', href:'#lesson-' + nx.id}, nx.n + '. ' + nx.title + ' >') : h('a', {class:'btn', href:'#learn'}, 'ALL TRACKS')));
+  setTimeout(function(){ refreshHead(L); }, 0);
+  return view;
+}
+
+/* ---------- Citrus / Drive hub ---------- */
+function appUrl(){ if (S.set.appUrl) return S.set.appUrl; var u = location.href.split('#')[0]; return /^https?:\/\//.test(u) ? u : ''; }
+function buildStatus(){
+  var t = keyOf(), due = dueTotal(), nl = nextLesson(), xp = todayXp(), streak = calcStreak(), lv = levelOf(totalXp());
+  var known = cardList().filter(function(c){ return c.st && c.st.ivl >= 21; }).length;
+  var done = LESSONS.filter(function(L){ return lp(L).done; }).length;
+  var minutes = Math.max(10, Math.min(60, Math.round(due * 0.4) + (nl ? Math.min(30, Math.round(nl.minutes / 2)) : 0)));
+  var bits = [];
+  if (due) bits.push(due + ' cards due');
+  if (streak) bits.push(streak + '-day streak');
+  if (nl) bits.push('next: ' + nl.title);
+  var st = {
+    app:APP.id, title:APP.title, icon:APP.icon, color:APP.color, url:appUrl(), version:APP.version,
+    updatedAt:new Date().toISOString(),
+    summary:bits.join(' · ') || 'All caught up',
+    today:{date:t, done: xp >= S.set.goalXp},
+    next:{title: nl ? 'Lime: ' + nl.title : 'Lime: review', minutes:minutes},
+    asks: (due || nl) ? [{date:t, title:'Lime: study', minutes:minutes, slot:'free'}] : [],
+    pending: [].concat(due ? [due + ' cards due'] : [], nl ? ['Lesson ' + nl.n + ': ' + nl.title] : []),
+    extra:{streak:streak, xp:totalXp(), level:lv, due:due, lessonsDone:done, lessonsTotal:LESSONS.length, cardsKnown:known, exercisesSolved:Object.keys(S.done).length}
+  };
+  return st;
+}
+
+var G = {
+  clientId:'753489712404-ra7ahu34gjl305b4ss1765idmqg7am5s.apps.googleusercontent.com',
+  scope:'https://www.googleapis.com/auth/drive',
+  token:null, exp:0, unavailable:false, ids:{}, inflight:{}, queues:{}, last:0, lastErr:'', plan:null, planAt:0, email:''
+};
+try { G.ids = JSON.parse(LS.get('lime.gids') || '{}') || {}; } catch(e){}
+function saveIds(){ LS.set('lime.gids', JSON.stringify(G.ids)); }
+function gValid(){ return !!G.token && Date.now() < G.exp - 60000; }
+function gConnect(prompt){
+  return new Promise(async function(resolve, reject){
+    try {
+      if (window.__limeToken){ G.token = window.__limeToken; G.exp = Date.now() + 3600000; return resolve(); }
+      if (!(window.google && google.accounts && google.accounts.oauth2)) await loadScript('https://accounts.google.com/gsi/client', 8000);
+      var client = google.accounts.oauth2.initTokenClient({
+        client_id:G.clientId, scope:G.scope,
+        callback:function(r){ if (r.error) return reject(new Error(r.error)); G.token = r.access_token; G.exp = Date.now() + (r.expires_in || 3600) * 1000; LS.set('lime.gconn', '1'); resolve(); },
+        error_callback:function(e){ reject(new Error((e && e.type) || 'sign-in cancelled')); }
+      });
+      client.requestAccessToken({prompt: prompt == null ? '' : prompt});
+    } catch(e){ G.unavailable = true; reject(e); }
+  });
+}
+async function gapi(url, o){
+  o = o || {};
+  var method = o.method || 'GET', tries = 0;
+  for (;;){
+    var res;
+    try {
+      res = await fetch(url, {method:method, headers:Object.assign({Authorization:'Bearer ' + G.token}, o.headers || {}), body:o.body});
+    } catch(e){
+      if (method !== 'POST' && tries < 2){ tries++; await sleep(400 * tries + Math.random() * 300); continue; }
+      throw new Error('offline');
+    }
+    if (res.status === 401){ G.token = null; throw new Error('auth'); }
+    if ((res.status === 429 || res.status >= 500 || res.status === 403) && tries < 3){ tries++; await sleep(500 * tries + Math.random() * 500); continue; }
+    if (!res.ok){ var err = new Error('drive ' + res.status); err.status = res.status; throw err; }
+    return res;
+  }
+}
+function esc(s){ return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+var DRIVE = 'https://www.googleapis.com/drive/v3/files';
+async function findOne(name, parent, folder){
+  var q = "name='" + esc(name) + "' and '" + parent + "' in parents and trashed=false and mimeType" + (folder ? "='application/vnd.google-apps.folder'" : "!='application/vnd.google-apps.folder'");
+  var res = await gapi(DRIVE + '?q=' + encodeURIComponent(q) + '&orderBy=createdTime&pageSize=10&fields=' + encodeURIComponent('files(id,name,modifiedTime,appProperties)'));
+  var j = await res.json();
+  return (j.files && j.files[0]) || null;
+}
+function once(key, fn){
+  if (G.inflight[key]) return G.inflight[key];
+  var p = fn().finally(function(){ delete G.inflight[key]; });
+  G.inflight[key] = p; return p;
+}
+async function ensureFolder(name, parent){
+  return once('f:' + parent + '/' + name, async function(){
+    var found = await findOne(name, parent, true);
+    if (found) return found.id;
+    var res = await gapi(DRIVE + '?fields=id', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name, mimeType:'application/vnd.google-apps.folder', parents:[parent]})});
+    return (await res.json()).id;
+  });
+}
+async function ensurePath(names){
+  var cacheKey = names.join('/'), id;
+  if (G.ids[cacheKey]){
+    try { await gapi(DRIVE + '/' + G.ids[cacheKey] + '?fields=id,trashed'); return G.ids[cacheKey]; }
+    catch(e){ if (e.status === 404) delete G.ids[cacheKey]; else throw e; }
+  }
+  id = 'root';
+  for (var i = 0; i < names.length; i++) id = await ensureFolder(names[i], id);
+  G.ids[cacheKey] = id; saveIds(); return id;
+}
+async function findPath(names){
+  var id = 'root';
+  for (var i = 0; i < names.length; i++){ var f = await findOne(names[i], id, true); if (!f) return null; id = f.id; }
+  return id;
+}
+async function sha(text){
+  try { var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)); return Array.prototype.map.call(new Uint8Array(buf), function(b){ return pad(0) + b.toString(16).padStart(2, '0'); }).join('').slice(0, 40); }
+  catch(e){ var x = 2166136261; for (var i = 0; i < text.length; i++){ x ^= text.charCodeAt(i); x = Math.imul(x, 16777619); } return 'f' + (x >>> 0).toString(16); }
+}
+function multipart(meta, content){
+  var b = 'lime' + Math.random().toString(36).slice(2);
+  return {type:'multipart/related; boundary=' + b,
+    body:'--' + b + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) + '\r\n--' + b + '\r\nContent-Type: application/json\r\n\r\n' + content + '\r\n--' + b + '--'};
+}
+function serial(key, fn){
+  var prev = G.queues[key] || Promise.resolve();
+  var next = prev.catch(function(){}).then(fn);
+  G.queues[key] = next; return next;
+}
+function putJson(parent, name, obj, rev){
+  return serial(parent + '/' + name, async function(){
+    var text = JSON.stringify(obj), h1 = await sha(text);
+    var ex = await findOne(name, parent, false);
+    if (ex && ex.appProperties && ex.appProperties.h === h1) return {skipped:true, id:ex.id};
+    var props = {h:h1, rev:String(rev == null ? ((ex && ex.appProperties && Number(ex.appProperties.rev)) || 0) + 1 : rev)};
+    if (ex){
+      var m = multipart({appProperties:props}, text);
+      var r = await gapi('https://www.googleapis.com/upload/drive/v3/files/' + ex.id + '?uploadType=multipart&fields=id', {method:'PATCH', headers:{'Content-Type':m.type}, body:m.body});
+      return {id:(await r.json()).id, updated:true};
+    }
+    var m2 = multipart({name:name, parents:[parent], mimeType:'application/json', appProperties:props}, text);
+    var r2 = await gapi('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {method:'POST', headers:{'Content-Type':m2.type}, body:m2.body});
+    return {id:(await r2.json()).id, created:true};
+  });
+}
+async function readJson(id){
+  var res = await gapi(DRIVE + '/' + id + '?alt=media');
+  var buf = await res.arrayBuffer();
+  return JSON.parse(new TextDecoder().decode(buf));
+}
+async function gPushStatus(){
+  var dir = await ensurePath(['My Apps', 'hub', 'lime']);
+  return putJson(dir, 'status.json', buildStatus());
+}
+async function gSyncState(){
+  var dir = await ensurePath(['My Apps', 'hub', 'lime']);
+  for (var round = 0; round < 2; round++){
+    var ex = await findOne('state.json', dir, false), rev0 = ex && ex.appProperties ? Number(ex.appProperties.rev || 0) : 0;
+    if (ex){
+      var remote = await readJson(ex.id);
+      var merged = mergeState(S, remote && remote.state);
+      if (!same(merged, S)){ S = merged; persistLocal(); }
+    }
+    var now = await findOne('state.json', dir, false), rev1 = now && now.appProperties ? Number(now.appProperties.rev || 0) : 0;
+    if (rev1 !== rev0) continue;
+    await putJson(dir, 'state.json', {app:APP.id, v:1, updatedAt:new Date().toISOString(), state:S}, rev0 + 1);
+    return;
+  }
+}
+async function gLoadPlan(){
+  var dir = await findPath(['My Apps', 'hub', 'citrus']);
+  if (!dir){ G.plan = []; return; }
+  var f = await findOne('plan.json', dir, false);
+  if (!f){ G.plan = []; return; }
+  var j = await readJson(f.id);
+  var blocks = (j && Array.isArray(j.blocks)) ? j.blocks : [];
+  G.plan = blocks.filter(function(b){ return b && b.app === APP.id; }).map(function(b){
+    return {date:String(b.date || '').slice(0, 10), start:String(b.start || '').slice(0, 5), end:String(b.end || '').slice(0, 5), title:String(b.title || 'Lime').slice(0, 80), status:b.status === 'accepted' ? 'accepted' : 'suggested'};
+  });
+  G.planAt = Date.now();
+}
+var syncing = false;
+async function syncAll(manual){
+  if (syncing) return;
+  if (!gValid()){
+    if (!manual) return;
+    try { await gConnect(''); } catch(e){ G.lastErr = G.unavailable ? 'Google sign-in is not available in this view.' : 'Sign-in did not finish.'; return rerender(); }
+  }
+  syncing = true;
+  try {
+    await gSyncState(); await gPushStatus();
+    if (Date.now() - G.planAt > 30 * 60000 || manual) await gLoadPlan().catch(function(){});
+    G.last = Date.now(); G.lastErr = '';
+  } catch(e){ G.lastErr = e.message === 'offline' ? 'Offline. Will retry.' : e.message === 'auth' ? 'Tap Sync to sign in again.' : 'Sync failed (' + e.message + ').'; }
+  syncing = false; chrome(); if (manual) rerender();
+}
+var syncTimer = null, driveTimer = null;
+function queueSync(){
+  clearTimeout(syncTimer); syncTimer = setTimeout(cloudPush, 1500);
+  clearTimeout(driveTimer); if (gValid()) driveTimer = setTimeout(function(){ syncAll(false); }, 30000);
+}
+
+/* ---------- cloud sync when this page runs as a Claude artifact ---------- */
+var Cloud = {ref:null, status:'off', last:0, writing:false, pending:false, pushedOnce:false};
+async function cloudInit(){
+  try {
+    if (!(window.claude && window.claude.use)) return;
+    var res = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+    var db = res[0], user = res[1];
+    if (!db || !user) return;
+    var uid = await user.id(); if (!uid) return;
+    Cloud.ref = db.doc('data/users/' + uid + '/progress'); Cloud.status = 'connecting';
+    var timer = setTimeout(function(){ if (Cloud.status === 'connecting') Cloud.status = 'slow'; }, 10000);
+    Cloud.ref.onSnapshot(function(snap){
+      clearTimeout(timer); Cloud.last = Date.now(); Cloud.status = snap.metadata.fromCache ? 'cached' : 'on';
+      var d = snap.exists ? snap.data() : null;
+      if (d && d.state){
+        var merged = mergeState(S, d.state);
+        if (!same(merged, S)){ S = merged; persistLocal(); rerenderSoft(); }
+        if (!snap.metadata.fromCache && !same(merged, d.state)) cloudPush();
+      } else if (!snap.metadata.fromCache && !Cloud.pushedOnce){ cloudPush(); }
+      if (!snap.metadata.fromCache) Cloud.pushedOnce = true;
+    }, function(){ Cloud.status = 'error'; });
+  } catch(e){ Cloud.status = 'off'; }
+}
+async function cloudPush(){
+  if (!Cloud.ref) return;
+  if (Cloud.writing){ Cloud.pending = true; return; }
+  Cloud.writing = true;
+  try { await Cloud.ref.set({v:1, updatedAt:Date.now(), state:JSON.parse(JSON.stringify(S))}); Cloud.last = Date.now(); if (Cloud.status !== 'on') Cloud.status = 'on'; }
+  catch(e){ Cloud.status = 'error'; }
+  Cloud.writing = false;
+  if (Cloud.pending){ Cloud.pending = false; cloudPush(); }
+}
+
+/* ---------- views ---------- */
+var route = {name:'home', arg:null};
+var R = null; // flashcard session
+function parseRoute(){
+  var hsh = (location.hash || '#home').slice(1);
+  if (hsh.indexOf('lesson-') === 0 && LBY[hsh.slice(7)]) return {name:'lesson', arg:hsh.slice(7)};
+  return {name:['home', 'learn', 'cards', 'me'].indexOf(hsh) >= 0 ? hsh : 'home', arg:null};
+}
+function chrome(){
+  var xp = totalXp(), lv = levelOf(xp), streak = calcStreak(), due = dueTotal();
+  var chips = $('#chips'); chips.replaceChildren(
+    h('span', {class:'chip hot'}, 'LV ' + lv), h('span', {class:'chip'}, xp + ' XP'),
+    h('span', {class:'chip'}, 'STREAK ' + streak));
+  var nav = $('#nav'); nav.replaceChildren();
+  [['home', 'HOME'], ['learn', 'LEARN'], ['cards', 'CARDS'], ['me', 'ME']].forEach(function(n){
+    var a = h('a', {href:'#' + n[0]}, icon(n[0] === 'learn' ? 'learn' : n[0]), h('span', null, n[1]));
+    if (route.name === n[0] || (n[0] === 'learn' && route.name === 'lesson')) a.setAttribute('aria-current', 'page');
+    if (n[0] === 'cards' && due > 0) a.append(h('span', {class:'badge'}, due > 99 ? '99+' : due));
+    nav.append(a);
+  });
+}
+function rerender(){ var v = $('#view'); v.replaceChildren(buildView()); chrome(); }
+function rerenderSoft(){ if (route.name === 'lesson'){ chrome(); if (headRefs) refreshHead(headRefs.L); } else rerender(); }
+function buildView(){
+  headRefs = null;
+  if (route.name === 'lesson') return lessonView(LBY[route.arg]);
+  if (route.name === 'learn') return learnView();
+  if (route.name === 'cards') return cardsView();
+  if (route.name === 'me') return meView();
+  return homeView();
+}
+
+function homeView(){
+  var xp = todayXp(), goal = S.set.goalXp, nl = nextLesson(), due = dueNow(), nw = newAvail(cardList()), total = totalXp(), lv = levelOf(total), b = levelBounds(lv);
+  var wrap = h('div', null);
+  wrap.append(h('div', {class:'card'},
+    h('h1', {class:'title'}, 'TODAY ' + fmtDate(keyOf())),
+    h('div', {class:'sub'}, 'Daily goal: ' + Math.min(xp, goal) + ' of ' + goal + ' XP' + (xp >= goal ? '. Done for today.' : '')),
+    h('div', {class:'bar', style:'margin:10px 0 14px'}, h('i', {style:'width:' + Math.min(100, 100 * xp / goal) + '%'})),
+    h('div', {class:'sub'}, 'Level ' + lv + ': ' + (total - b[0]) + ' of ' + (b[1] - b[0]) + ' XP to level ' + (lv + 1)),
+    h('div', {class:'bar', style:'margin-top:8px'}, h('i', {style:'width:' + (100 * (total - b[0]) / (b[1] - b[0])) + '%'}))));
+  var m = h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'MISSIONS'));
+  var nlp = nl ? lp(nl) : null;
+  m.append(h('div', {class:'mission'}, h('span', {class:'tick' + (!nl ? ' on' : nlp.started ? ' part' : '')}, !nl ? 'OK' : ''),
+    h('div', {class:'t'}, h('b', null, nl ? (nlp.started ? 'Continue: ' : 'Start: ') + nl.n + '. ' + nl.title : 'Python foundations complete'),
+      h('span', {class:'sub'}, nl ? nlp.ex + '/' + nlp.exN + ' exercises, ' + nlp.pr + '/' + nlp.prN + ' predictions' : 'More tracks arrive next. Review your cards meanwhile.')),
+    nl ? h('a', {class:'btn small', href:'#lesson-' + nl.id}, nlp.started ? 'CONTINUE' : 'START') : null));
+  m.append(h('div', {class:'mission'}, h('span', {class:'tick' + ((due + nw) === 0 && cardList().length ? ' on' : '')}, (due + nw) === 0 && cardList().length ? 'OK' : ''),
+    h('div', {class:'t'}, h('b', null, (due + nw) ? 'Review ' + due + ' due and ' + nw + ' new cards' : cardList().length ? 'All cards reviewed' : 'No cards yet'),
+      h('span', {class:'sub'}, cardList().length ? 'Short, spaced reviews beat long cramming.' : 'Open a lesson and its flashcards are added.')),
+    (due + nw) ? h('a', {class:'btn small', href:'#cards'}, 'REVIEW') : null));
+  var pq = null;
+  LESSONS.forEach(function(L){ if (!pq && S.read[L.id]) L.predict.forEach(function(p, i){ if (!pq && !S.pred[L.id + ':p' + i]) pq = L; }); });
+  m.append(h('div', {class:'mission'}, h('span', {class:'tick' + (pq ? '' : ' on')}, pq ? '' : 'OK'),
+    h('div', {class:'t'}, h('b', null, pq ? 'Predict some output' : 'All predictions answered'),
+      h('span', {class:'sub'}, pq ? 'Open "' + pq.title + '" and run the programs in your head.' : 'Nice. Keep going with new lessons.')),
+    pq ? h('a', {class:'btn small ghost', href:'#lesson-' + pq.id}, 'OPEN') : null));
+  wrap.append(m);
+  var plan = (G.plan || []).filter(function(p){ return p.date >= keyOf(); }).slice(0, 4);
+  if (plan.length){
+    wrap.append(h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'CITRUS PLANNED'),
+      plan.map(function(p){ return h('div', {class:'mission'}, h('div', {class:'t'}, h('b', null, fmtDate(p.date) + ' ' + p.start + ' to ' + p.end), h('span', {class:'sub'}, p.title + (p.status === 'accepted' ? ' (on your calendar)' : ' (suggested)'))), null); })));
+  }
+  var done = LESSONS.filter(function(L){ return lp(L).done; }).length;
+  wrap.append(h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'THE MAP'),
+    h('p', {class:'sub'}, 'Python foundations is live (' + done + ' of ' + LESSONS.length + ' lessons done). ' + (TRACKS.length - 1) + ' more tracks are planned: automation, JavaScript, algorithms, how computers work, theory, data, databases, engineering, AI, security, games.'),
+    h('a', {class:'btn ghost small', href:'#learn'}, 'OPEN THE MAP')));
+  return wrap;
+}
+
+function learnView(){
+  var wrap = h('div', null, h('h1', {class:'title'}, 'THE MAP'), h('p', {class:'sub', style:'margin:0 0 16px'}, 'Every track goes deep: explanation, a mental model, predictions, exercises with tests, and flashcards. Live tracks are open now. Planned tracks show what is coming.'));
+  TRACKS.forEach(function(t){
+    var ls = LESSONS.filter(function(L){ return L.track === t.id; });
+    var done = ls.filter(function(L){ return lp(L).done; }).length;
+    var total = ls.length || t.planned.length;
+    var body = h('div', {class:'tl'});
+    ls.forEach(function(L){
+      var p = lp(L);
+      body.append(h('a', {class:'les', href:'#lesson-' + L.id},
+        h('span', {class:'tick' + (p.done ? ' on' : p.started ? ' part' : '')}, p.done ? 'OK' : ''),
+        h('div', {class:'t', style:'flex:1;min-width:0'}, h('b', null, L.n + '. ' + L.title), h('div', {class:'sub'}, '~' + L.minutes + ' min. ' + p.ex + '/' + p.exN + ' exercises')),
+        h('span', {class:'tag'}, p.done ? 'DONE' : p.started ? 'OPEN' : 'NEW')));
+    });
+    if (!ls.length) t.planned.forEach(function(x){ body.append(h('div', {class:'planned'}, x)); });
+    wrap.append(h('details', {class:'track', open:t.status === 'live'},
+      h('summary', null, h('div', {class:'tn'}, h('b', null, t.name.toUpperCase()), h('span', {class:'sub'}, t.blurb)),
+        h('span', {class:'tag' + (t.status === 'live' ? ' live' : '')}, t.status === 'live' ? done + '/' + total : total + ' PLANNED')), body));
+  });
+  return wrap;
+}
+
+function startReview(){
+  var t = dayNum(), list = cardList();
+  var due = shuffle(list.filter(function(c){ return c.st && c.st.due <= t; }));
+  var fresh = shuffle(list.filter(function(c){ return !c.st; })).slice(0, newAvail(list));
+  R = {queue:due.concat(fresh), shown:false, done:0, total:due.length + fresh.length, again:0};
+}
+function cardsView(){
+  var list = cardList(), wrap = h('div', null);
+  if (R && R.queue.length) return reviewView();
+  if (R && R.total && !R.queue.length){
+    wrap.append(h('div', {class:'card empty'}, h('h2', {class:'h-pix'}, 'SESSION COMPLETE'), h('p', null, 'You reviewed ' + R.done + ' cards' + (R.again ? ' (' + R.again + ' needed another look)' : '') + '.'),
+      h('a', {class:'btn', href:'#home'}, 'BACK HOME')));
+    R = null; return wrap;
+  }
+  var due = dueNow(), nw = newAvail(list);
+  wrap.append(h('div', {class:'card'}, h('h1', {class:'title'}, 'FLASHCARDS'),
+    h('p', {class:'sub'}, list.length ? due + ' due, ' + nw + ' new available today (limit ' + S.set.newPerDay + '). ' + list.length + ' cards unlocked.' : 'Cards unlock when you open a lesson.'),
+    (due + nw) ? h('button', {class:'btn', onclick:function(){ startReview(); rerender(); }}, 'START REVIEW') : (list.length ? h('p', null, 'All caught up. Come back tomorrow.') : h('a', {class:'btn', href:'#learn'}, 'OPEN A LESSON'))));
+  var byL = {}; list.forEach(function(c){ (byL[c.lesson.id] = byL[c.lesson.id] || []).push(c); });
+  var t = dayNum();
+  Object.keys(byL).forEach(function(id){
+    var cs = byL[id], L = LBY[id];
+    var known = cs.filter(function(c){ return c.st && c.st.ivl >= 21; }).length, seen = cs.filter(function(c){ return c.st; }).length;
+    wrap.append(h('div', {class:'card tight'}, h('b', null, L.n + '. ' + L.title), h('div', {class:'sub'}, cs.length + ' cards. ' + seen + ' seen, ' + known + ' well known, ' + cs.filter(function(c){ return c.st && c.st.due <= t; }).length + ' due'),
+      h('div', {class:'bar', style:'margin-top:8px;height:10px'}, h('i', {style:'width:' + (100 * known / cs.length) + '%'}))));
+  });
+  return wrap;
+}
+function reviewView(){
+  var c = R.queue[0], st = c.st, t = dayNum();
+  var wrap = h('div', null, h('div', {class:'row', style:'justify-content:space-between;margin-bottom:10px'},
+    h('span', {class:'tag'}, (R.total - R.queue.length + (R.queue.length ? 0 : 0)) + ' of ' + R.total + ' (' + R.queue.length + ' left)'),
+    h('button', {class:'btn small ghost', onclick:function(){ R.queue = []; R.total = 0; R = null; rerender(); }}, 'END SESSION')),
+    h('div', {class:'bar', style:'margin-bottom:14px'}, h('i', {style:'width:' + (100 * R.done / Math.max(1, R.total)) + '%'})));
+  var face = h('div', {class:'fcard', tabindex:'0', role:'button', 'aria-label':'Flip card'}, h('span', {class:'side'}, 'QUESTION. ' + c.lesson.title.toUpperCase()), h('div', {class:'q'}, fmt(c.f)));
+  var rates = h('div', {class:'rate', hidden:true});
+  var reveal = h('button', {class:'btn', style:'width:100%'}, 'SHOW ANSWER');
+  function show(){
+    if (R.shown) return; R.shown = true;
+    face.append(h('div', {class:'a'}, h('span', {class:'side'}, 'ANSWER'), h('div', null, fmt(c.b))));
+    rates.hidden = false; reveal.hidden = true;
+  }
+  function rate(r){
+    if (!R.shown) return;
+    var isNew = !st, wasAgain = r === 0;
+    S.cards[c.id] = schedule(st, r, t);
+    if (isNew){ var d = S.days[keyOf()] || (S.days[keyOf()] = {xp:0, ex:0, pred:0, cards:0, newc:0}); d.newc = (d.newc || 0) + 1; }
+    award(r >= 2 ? 2 : 1, 'cards');
+    R.queue.shift(); R.shown = false;
+    if (wasAgain){ R.again++; var nc = Object.assign({}, c, {st:S.cards[c.id]}); R.queue.push(nc); } else R.done++;
+    rerender();
+  }
+  reveal.addEventListener('click', show); face.addEventListener('click', show);
+  face.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); show(); } });
+  [['again', 'AGAIN', 0], ['hard', 'HARD', 1], ['good', 'GOOD', 2], ['easy', 'EASY', 3]].forEach(function(x){
+    rates.append(h('button', {class:'btn ' + x[0], onclick:function(){ rate(x[2]); }}, x[1], h('small', null, ivlLabel(R, st, x[2]))));
+  });
+  /* swipe: right = good, left = again */
+  var sx = null, dx = 0;
+  face.addEventListener('touchstart', function(e){ sx = e.touches[0].clientX; dx = 0; }, {passive:true});
+  face.addEventListener('touchmove', function(e){ if (sx == null) return; dx = e.touches[0].clientX - sx; if (R.shown) face.style.transform = 'translateX(' + dx * 0.6 + 'px) rotate(' + dx / 40 + 'deg)'; }, {passive:true});
+  face.addEventListener('touchend', function(){ face.style.transform = ''; if (sx != null && R.shown && Math.abs(dx) > 90) rate(dx > 0 ? 2 : 0); sx = null; });
+  wrap.append(h('div', {class:'fc'}, face), reveal, rates, h('p', {class:'sub', style:'margin-top:12px'}, 'Tap the card or press Space to flip. Then rate yourself honestly, or swipe right for Good and left for Again. Keys 1 to 4 also rate.'));
+  function onKey(e){
+    if (route.name !== 'cards' || !R){ document.removeEventListener('keydown', onKey); return; }
+    if (e.target && /TEXTAREA|INPUT/.test(e.target.tagName)) return;
+    if (e.key === ' ' && !R.shown){ e.preventDefault(); show(); }
+    else if (R.shown && '1234'.indexOf(e.key) >= 0 && e.key) rate(Number(e.key) - 1);
+  }
+  document.addEventListener('keydown', onKey);
+  return wrap;
+}
+
+function meView(){
+  var wrap = h('div', null), xp = totalXp(), lv = levelOf(xp);
+  var solved = Object.keys(S.done).length, preds = Object.keys(S.pred).filter(function(k){ return S.pred[k].ok; }).length;
+  var cs = cardList(), known = cs.filter(function(c){ return c.st && c.st.ivl >= 21; }).length;
+  var reviews = 0; for (var k in S.days) reviews += S.days[k].cards || 0;
+  wrap.append(h('div', {class:'card'}, h('h1', {class:'title'}, 'PROGRESS'),
+    h('div', {class:'stats'},
+      stat('LV ' + lv, xp + ' XP total'), stat(String(calcStreak()), 'day streak'), stat(String(solved), 'exercises solved'),
+      stat(String(preds), 'predictions right'), stat(String(known), 'cards well known'), stat(String(reviews), 'card reviews'))));
+  var days = [], i; for (i = 13; i >= 0; i--){ var d = new Date(); d.setDate(d.getDate() - i); days.push(keyOf(d)); }
+  var mx = Math.max(10, Math.max.apply(null, days.map(function(x){ return (S.days[x] || {}).xp || 0; })));
+  wrap.append(h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'LAST 14 DAYS (XP)'),
+    h('div', {class:'spark', role:'img', 'aria-label':'XP earned per day for the last 14 days, highest ' + mx}, days.map(function(x){
+      var v = (S.days[x] || {}).xp || 0; return h('i', {class:v ? '' : 'z', style:'height:' + (v ? Math.max(4, 84 * v / mx) : 0) + 'px', title:fmtDate(x) + ': ' + v + ' XP'}); })),
+    h('div', {class:'lab'}, h('span', null, fmtDate(days[0])), h('span', null, 'today'))));
+  /* settings */
+  function seg(name, opts, cur, on){
+    return h('div', {class:'seg', role:'group', 'aria-label':name}, opts.map(function(o){ return h('button', {type:'button', 'aria-pressed':String(cur === o[0]), onclick:function(){ on(o[0]); }}, o[1]); }));
+  }
+  var newIn = h('input', {type:'number', min:'0', max:'50', value:S.set.newPerDay, id:'set-new', onchange:function(e){ S.set.newPerDay = Math.max(0, Math.min(50, Number(e.target.value) || 0)); save(); chrome(); }});
+  var goalIn = h('input', {type:'number', min:'10', max:'500', value:S.set.goalXp, id:'set-goal', onchange:function(e){ S.set.goalXp = Math.max(10, Math.min(500, Number(e.target.value) || 40)); save(); }});
+  wrap.append(h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'SETTINGS'),
+    h('div', {class:'field'}, h('label', null, 'Theme'), seg('Theme', [['auto', 'AUTO'], ['light', 'LIGHT'], ['dark', 'DARK']], S.set.theme, function(v){ S.set.theme = v; applyTheme(); save(); rerender(); })),
+    h('div', {class:'field'}, h('label', {for:'set-new'}, 'New cards per day'), newIn),
+    h('div', {class:'field'}, h('label', {for:'set-goal'}, 'Daily goal (XP)'), goalIn)));
+  /* hub */
+  var st = buildStatus(), statusText = JSON.stringify(st, null, 2);
+  var cloud = Cloud.ref ? ({on:'Synced across your devices through this page.', cached:'Showing saved data. Waiting for the server.', connecting:'Connecting...', slow:'The server is slow to answer. Your progress is saved on this device.', error:'Cloud sync hit an error. Your progress is saved on this device.'}[Cloud.status] || '') : '';
+  var gConn = gValid() || LS.get('lime.gconn') === '1';
+  var hub = h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'CITRUS AND DRIVE'),
+    h('p', {class:'sub'}, 'Lime follows your hub contract: it writes status.json to My Apps/hub/lime and backs up progress to state.json there, so Citrus can see how much is due and plan study time. It reads Citrus\'s plan.json for blocks planned for Lime.'),
+    cloud ? h('p', null, h('strong', null, 'This page: '), cloud, Cloud.last ? ' Last: ' + fmtDateTime(Cloud.last) + '.' : '') : null,
+    h('p', null, h('strong', null, 'Google Drive: '), G.unavailable ? 'Google sign-in cannot open in this view. It works in the installed Lime app.' : (gValid() ? 'Connected.' : gConn ? 'Tap Sync to sign in again (Google tokens last an hour).' : 'Not connected.'), G.last ? ' Last sync: ' + fmtDateTime(G.last) + '.' : ''),
+    G.lastErr ? h('p', {style:'color:var(--bad)'}, G.lastErr) : null,
+    h('div', {class:'row'}, h('button', {class:'btn small', onclick:function(){ syncAll(true); }}, gConn ? 'SYNC NOW' : 'CONNECT GOOGLE'), h('button', {class:'btn small ghost', onclick:function(){ copyText(statusText); }}, 'COPY STATUS JSON')),
+    h('pre', {class:'json', tabindex:'0', 'aria-label':'Status file preview'}, statusText));
+  if (G.plan && G.plan.length) hub.append(h('h3', {class:'h-pix'}, 'PLANNED BY CITRUS'), G.plan.map(function(p){ return h('div', {class:'sub'}, fmtDate(p.date) + ' ' + p.start + ' to ' + p.end + ', ' + p.status); }));
+  wrap.append(hub);
+  /* backup */
+  var paste = h('textarea', {class:'paste', id:'paste', placeholder:'Paste a progress backup here, then press Merge.', 'aria-label':'Paste a progress backup'});
+  wrap.append(h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'BACKUP BY HAND'),
+    h('p', {class:'sub'}, 'Progress is saved on this device automatically. You can also copy it out and merge it in on another device.'),
+    h('div', {class:'row'}, h('button', {class:'btn small ghost', onclick:function(){ copyText(JSON.stringify(S)); }}, 'COPY PROGRESS'),
+      h('button', {class:'btn small ghost', onclick:function(){
+        try { var o = JSON.parse(paste.value); if (!o || typeof o !== 'object' || !o.days) throw new Error('x'); S = mergeState(S, o); save(); toast('MERGED'); rerender(); }
+        catch(e){ toast('THAT IS NOT A LIME BACKUP'); }
+      }}, 'MERGE')), paste,
+    h('div', {class:'row', style:'margin-top:12px'}, h('button', {class:'btn small danger', onclick:async function(){
+      var yes = await ask({title:'Reset all progress?', text:'This clears XP, solved exercises and flashcard schedules on this device and, if sync is on, on your other devices.', ok:'Reset everything', danger:true});
+      if (!yes) return; var s = blank(); s.epoch = Date.now(); s.set = S.set; S = s; drafts = {}; LS.set('lime.drafts', '{}'); save(); R = null; toast('PROGRESS RESET'); rerender();
+    }}, 'RESET PROGRESS'))));
+  /* engine notes */
+  wrap.append(h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'ABOUT THE PYTHON ENGINE'),
+    h('p', {class:'sub'}, 'Python runs inside this page using Brython, a Python 3 interpreter written in JavaScript. It is very close to desktop Python, with a few known differences:'),
+    h('ul', null,
+      h('li', null, fmt('`"".split()` and other whitespace-only strings return `[\'\']` here, but `[]` in desktop Python.')),
+      h('li', null, fmt('`round(2.675, 2)` gives `2.68` here, but `2.67` in desktop Python, which uses the exact binary value.')),
+      h('li', null, fmt('Summing many floats can differ in the last digit: `sum([0.1] * 10)` is `0.9999999999999999` here and `1.0` in Python 3.12 and later.')),
+      h('li', null, fmt('`input()` is not available. Put test values in variables.')),
+      h('li', null, 'A loop that runs for several seconds is stopped for you.'),
+      h('li', null, 'Packages such as NumPy and pandas are not available yet. The data track will teach the ideas first with the standard library.')),
+    h('p', {class:'sub'}, 'If a result ever looks wrong, check it in real Python before you trust it.')));
+  return wrap;
+}
+function stat(a, b){ return h('div', {class:'stat'}, h('b', null, a), h('span', null, b)); }
+
+/* ---------- boot ---------- */
+function onRoute(){
+  route = parseRoute(); if (route.name !== 'cards' && R && !R.queue.length) R = null;
+  rerender(); window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', onRoute);
+document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden'){ persistLocal(); cloudPush(); if (gValid()) syncAll(false); } });
+document.getElementById('logo').append(pix(LIME_ART, LIME_COL, 34, ''));
+applyTheme();
+onRoute();
+cloudInit();
+window.__lime = {state:function(){ return S; }, mergeState:mergeState, buildStatus:buildStatus, G:G, syncAll:syncAll, schedule:schedule, Py:Py, award:award, lp:lp, LESSONS:LESSONS};
+})();
+</script>

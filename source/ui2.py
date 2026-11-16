@@ -1,6 +1,7 @@
 import asyncio, json, sys
 from playwright.async_api import async_playwright
-W='/tmp/claude-0/-home-claude/f6ad2d12-6ada-5e0e-b708-bb181457ad9d/scratchpad/work/'
+import os
+W=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))+'/'  # folder that holds lime/ and node_modules/
 P='file://'+W+'lime/out/page.html'
 FAKE = r"""
 (() => {
@@ -20,12 +21,14 @@ FAKE = r"""
     if (u.pathname === '/drive/v3/files' && (o.method||'GET') === 'GET'){
       const q = u.searchParams.get('q');
       const name = /name='([^']*)'/.exec(q)[1], parent = /'([^']*)' in parents/.exec(q)[1], folder = q.includes("mimeType='application");
-      const hit = Object.values(files).filter(f => f.name === name && f.parents.includes(parent) && ((f.mimeType === 'application/vnd.google-apps.folder') === folder));
+      const hit = Object.values(files).filter(f => f.name === name && f.parents.includes(parent) && !f.trashed && ((f.mimeType === 'application/vnd.google-apps.folder') === folder));
       return json({files: hit.map(f => ({id:f.id, name:f.name, appProperties:f.appProperties}))});
     }
     if (u.pathname === '/drive/v3/files' && o.method === 'POST'){ const m = JSON.parse(o.body); return json({id: add(m).id}); }
+    if (u.pathname === '/drive/v3/changes/startPageToken') return json({startPageToken:'1'});
+    if (u.pathname === '/drive/v3/changes') return json({newStartPageToken:'1', changes:[]});
     const mm = /^\/drive\/v3\/files\/(\w+)$/.exec(u.pathname);
-    if (mm){ const f = files[mm[1]]; if (!f) return new Response('{}', {status:404}); if (u.searchParams.get('alt') === 'media') return new Response(f.content); return json({id:f.id}); }
+    if (mm){ const f = files[mm[1]]; if (!f) return new Response('{}', {status:404}); if (o.method === 'PATCH'){ Object.assign(f, JSON.parse(o.body || '{}')); return json({id:f.id}); } if (u.searchParams.get('alt') === 'media') return new Response(f.content); return json({id:f.id}); }
     const up = /^\/upload\/drive\/v3\/files(?:\/(\w+))?$/.exec(u.pathname);
     if (up){
       const parts = o.body.split(/--lime\w+/); const meta = JSON.parse(parts[1].split('\r\n\r\n')[1]); const content = parts[2].split('\r\n\r\n').slice(1).join('\r\n\r\n').replace(/\r\n$/, '');
@@ -101,8 +104,9 @@ async def main():
             await bx.get_by_role('button', name='CHECK').click()
         # teach
         t=pg.locator('.teach textarea')
-        await t.fill(' '.join(['word']*30))
+        await t.fill(' '.join('w%d'%i for i in range(30)))
         await pg.get_by_role('button', name='COMPARE WITH A MODEL').click()
+        for cb in await pg.locator('.teach .tpoints input[type=checkbox]').all(): await cb.check()
         await pg.get_by_role('button', name='I COVERED IT ALL').click()
         await pg.wait_for_timeout(300)
         print('lp py01', await pg.evaluate("JSON.stringify(__lime.lp(__lime.LESSONS[0]))"))
@@ -118,10 +122,10 @@ async def main():
         # index
         await go('#index'); await pg.fill('.search', 'modulo'); print('index:', (await pg.inner_text('#view'))[150:260].replace('\n',' '))
         # bench
-        await go('#bench'); await pg.fill('.namebox', 'my first'); await pg.get_by_role('button', name='SAVE').click(); await pg.wait_for_timeout(200)
+        await go('#bench'); await pg.fill('.namebox', 'my first'); await pg.get_by_role('button', name='SAVE', exact=True).click(); await pg.wait_for_timeout(200)
         print('snips', await pg.evaluate("Object.keys(__lime.state().snip)"))
         # simulate all lessons complete for exam + project
-        st = await pg.evaluate("""() => { const S = JSON.parse(JSON.stringify(__lime.state())); for (const L of __lime.LESSONS){ S.read[L.id]=Date.now(); L.exercises.forEach(e=>S.done[L.id+':'+e.id]={t:Date.now()-5*86400000,n:1}); L.predict.forEach((p,i)=>S.pred[L.id+':p'+i]={ok:true,t:1}); const C=__lime.CITY[L.id]; C.jobs.forEach(j=>S.done[L.id+':job:'+j.id]={t:1,n:1}); C.parsons.forEach(p=>S.done[L.id+':par:'+p.id]={t:1}); C.read.forEach(r=>S.pred[L.id+':read:'+r.id]={ok:true,t:1}); S.teach[L.id]={self:'full',t:1}; } __lime.setState(S); return 1; }""")
+        st = await pg.evaluate("""() => { const S = JSON.parse(JSON.stringify(__lime.state())); for (const L of __lime.LESSONS){ S.read[L.id]=Date.now(); L.exercises.forEach(e=>S.done[L.id+':'+e.id]={t:Date.now()-5*86400000,n:1}); L.predict.forEach((p,i)=>S.pred[L.id+':'+(p.id||'p'+i)]={ok:true,t:1}); const C=__lime.CITY[L.id]; C.jobs.forEach(j=>S.done[L.id+':job:'+j.id]={t:1,n:1}); C.parsons.forEach(p=>S.done[L.id+':par:'+p.id]={t:1}); C.read.forEach(r=>S.pred[L.id+':read:'+r.id]={ok:true,t:1}); S.teach[L.id]={self:'full',t:1}; } __lime.setState(S); return 1; }""")
         await go('#d-py'); await sw('district2'); 
         print('district:', 'START' in await pg.inner_text('#view'))
         # side quest
@@ -133,7 +137,7 @@ async def main():
         await go('#exam-py'); await pg.get_by_role('button', name='BEGIN').click(); await pg.wait_for_timeout(200)
         for i in range(len(D['exam'])):
             code = await pg.inner_text('.pred pre.src')
-            ans = [x['ans'] for x in D['exam'] if x['code']==code][0]
+            ans = [x['ans'] for sl in D['exam'] for x in sl['items'] if x['code']==code][0]
             if i==0: ans='wrong'
             await pg.fill('.pred textarea', ans)
             await pg.get_by_role('button', name='FINISH' if i==len(D['exam'])-1 else 'NEXT').click(); await pg.wait_for_timeout(80)

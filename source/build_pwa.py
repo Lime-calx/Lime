@@ -68,13 +68,14 @@ HEAD = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#8BD122">
+<meta name="theme-color" content="#EDF3DF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#142010" media="(prefers-color-scheme: dark)">
 <meta name="description" content="Learn programming and computer science in Calx, the Clockwork City.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/favicon.png">
 <link rel="apple-touch-icon" href="icons/apple-180.png">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}
-#upd{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:80;font:10px/1.5 'Press Start 2P',monospace;background:#FFD75E;color:#17230E;border:2px solid #17230E;box-shadow:3px 3px 0 #17230E;padding:10px 14px;cursor:pointer}</style>
+#upd{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:80;font:8px/1.6 'Press Start 2P',monospace;letter-spacing:.5px;-webkit-font-smoothing:none;background:#FFD75E;color:#17230E;border:2px solid #17230E;box-shadow:3px 3px 0 #17230E;padding:10px 14px;cursor:pointer}</style>
 <script>window.__LIME_BRYTHON_BASE = 'vendor/brython/';</script>
 </head>
 <body>

@@ -1,11 +1,17 @@
 import asyncio, json, subprocess, sys, time
 from playwright.async_api import async_playwright
-SRV='/tmp/claude-0/-home-claude/f6ad2d12-6ada-5e0e-b708-bb181457ad9d/scratchpad/srv'
-FAKE=open('/tmp/claude-0/-home-claude/f6ad2d12-6ada-5e0e-b708-bb181457ad9d/scratchpad/work/lime/ui2.py').read().split('FAKE = r"""')[1].split('"""')[0]
+import os, shutil
+HERE=os.path.dirname(os.path.abspath(__file__))
+PORT=int(os.environ.get('LIME_PORT','8765'))
+SRV=os.path.join(HERE,'out','srv')
+shutil.rmtree(SRV, ignore_errors=True); shutil.copytree(os.path.join(HERE,'pwa','dist'), os.path.join(SRV,'Lime'))
+CIT=os.environ.get('CITRUS_DOCS','/tmp/claude-0/-home-claude/f6ad2d12-6ada-5e0e-b708-bb181457ad9d/scratchpad/citrus/docs')
+if os.path.isdir(CIT): shutil.copytree(CIT, os.path.join(SRV,'citrus'))
+FAKE=open(os.path.join(HERE,'ui2.py')).read().split('FAKE = r"""')[1].split('"""')[0]
 # night tonight in the fake plan
 FAKE = FAKE.replace("JSON.stringify({blocks:[", "JSON.stringify({days:{[k]:{shift:{code:'N2',label:'Night',start:'20:00',end:'08:00',overnight:true},blocks:[]}}, blocks:[")
 async def main():
-    srv = subprocess.Popen([sys.executable, '-m', 'http.server', '8765', '-d', SRV], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '-d', SRV], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(1)
     try:
         async with async_playwright() as p:
@@ -14,22 +20,22 @@ async def main():
             pg = await ctx.new_page(); errs=[]
             pg.on('pageerror', lambda e: errs.append(str(e)))
             pg.on('console', lambda m: errs.append(m.text) if m.type=='error' and 'fonts.g' not in m.text and 'ERR_' not in m.text else None)
-            await pg.goto('http://localhost:8765/Lime/'); await pg.wait_for_timeout(1500)
+            await pg.goto('http://localhost:'+str(PORT)+'/Lime/'); await pg.wait_for_timeout(1500)
             print('manifest:', await pg.evaluate("fetch('manifest.webmanifest').then(r=>r.json()).then(j=>j.id+' '+j.icons.length)"))
             await pg.reload(); await pg.wait_for_timeout(1500)
             print('controlled:', await pg.evaluate("!!navigator.serviceWorker.controller"))
-            await pg.goto('http://localhost:8765/Lime/#lesson-py01'); await pg.wait_for_timeout(500)
-            await pg.locator('.cell .btn', has_text='RUN').first.click()
-            await pg.wait_for_function("(document.querySelector('.cell .out')||{}).textContent && !/Starting|Running/.test(document.querySelector('.cell .out').textContent)", timeout=60000)
-            print('python online:', (await pg.inner_text('.cell .out'))[:40])
+            await pg.goto('http://localhost:'+str(PORT)+'/Lime/#lesson-py01'); await pg.wait_for_timeout(500)
+            await pg.locator('.prose .cell .btn', has_text='RUN').first.click()
+            await pg.wait_for_function("(document.querySelector('.prose .cell .out')||{}).textContent && !/Starting|Running/.test(document.querySelector('.prose .cell .out').textContent)", timeout=60000)
+            print('python online:', (await pg.inner_text('.prose .cell .out'))[:40])
             await ctx.set_offline(True)
             await pg.reload(); await pg.wait_for_timeout(1500)
-            await pg.locator('.cell .btn', has_text='RUN').first.click()
-            await pg.wait_for_function("(document.querySelector('.cell .out')||{}).textContent && !/Starting|Running/.test(document.querySelector('.cell .out').textContent)", timeout=60000)
-            print('python OFFLINE:', (await pg.inner_text('.cell .out'))[:40])
+            await pg.locator('.prose .cell .btn', has_text='RUN').first.click()
+            await pg.wait_for_function("(document.querySelector('.prose .cell .out')||{}).textContent && !/Starting|Running/.test(document.querySelector('.prose .cell .out').textContent)", timeout=60000)
+            print('python OFFLINE:', (await pg.inner_text('.prose .cell .out'))[:40])
             await ctx.set_offline(False)
             # deep link
-            await pg.goto('http://localhost:8765/Lime/?from=citrus&do=review'); await pg.wait_for_timeout(800)
+            await pg.goto('http://localhost:'+str(PORT)+'/Lime/?from=citrus&do=review'); await pg.wait_for_timeout(800)
             print('deep link ->', await pg.evaluate('location.href'), '| chips:', (await pg.inner_text('#chips')).replace('\n',' '))
             # fake drive + plan with a night shift today
             await pg.evaluate(FAKE)

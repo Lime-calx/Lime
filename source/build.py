@@ -4,6 +4,19 @@ import glob, json, os, runpy, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from runner import run_code  # noqa: E402
+import re  # noqa: E402
+
+# Brython bug: all()/any() over a generator swallow exceptions, so tests must use lists.
+_GEN_IN_ALL = re.compile(r"\b(all|any)\(\s*(?!\[)[^\n]*?\sfor\s")
+
+
+def lint_tests(key, tests):
+    if _GEN_IN_ALL.search(tests or ""):
+        problems.append("TEST LINT %s: use all([...]) / any([...]) with a list, not a generator (Brython hides errors inside generators)" % key)
+
+
+def norm_out(s):
+    return "\n".join(l.rstrip() for l in s.replace("\r", "").split("\n")).strip()
 
 problems = []
 lessons = []
@@ -23,6 +36,7 @@ for L in lessons:
         key = L["id"] + ":" + ex["id"]
         assert ex["id"] not in ids, key
         ids.add(ex["id"])
+        lint_tests(key, ex["tests"])
         sol = json.loads(run_code(ex["solution"], ex["tests"]))
         if sol["error"] or not sol["results"] or not all(r["ok"] for r in sol["results"]):
             problems.append("SOLUTION FAILS %s: %s" % (key, json.dumps(sol)[:600]))
@@ -30,6 +44,14 @@ for L in lessons:
         if not st["error"] and st["results"] and all(r["ok"] for r in st["results"]):
             problems.append("STARTER ALREADY PASSES %s" % key)
         expected.append({"k": key, "kind": "ex", "code": ex["solution"], "tests": ex["tests"]})
+    # stable ids for cards and predictions (progress is keyed on them)
+    for kind, items, pre in (("card", L["cards"], "c"), ("pred", L["predict"], "p")):
+        got = set()
+        for i, it in enumerate(items):
+            it.setdefault("id", "%s%d" % (pre, i))
+            if it["id"] in got:
+                problems.append("DUPLICATE %s id %s:%s" % (kind, L["id"], it["id"]))
+            got.add(it["id"])
     # code blocks
     bi = 0
     for b in L["blocks"]:
@@ -41,13 +63,17 @@ for L in lessons:
     for i, p in enumerate(L["predict"]):
         r = json.loads(run_code(p["code"], ""))
         if r["error"]:
-            problems.append("PREDICT ERRORS %s:p%d %s" % (L["id"], i, r["error"]))
+            problems.append("PREDICT ERRORS %s:%s %s" % (L["id"], p["id"], r["error"]))
         p["ans"] = r["out"].rstrip("\n")
-        expected.append({"k": "%s:p%d" % (L["id"], i), "kind": "pred", "code": p["code"], "out": r["out"], "err": r["error"]})
+        for wrong in (p.get("traps") or {}):
+            if norm_out(wrong) == norm_out(p["ans"]):
+                problems.append("TRAP EQUALS ANSWER %s:%s" % (L["id"], p["id"]))
+        expected.append({"k": "%s:%s" % (L["id"], p["id"]), "kind": "pred", "code": p["code"], "out": r["out"], "err": r["error"]})
 
 
 # ---- city layer ----
 def check_ex(key, ex):
+    lint_tests(key, ex["tests"])
     sol = json.loads(run_code(ex["solution"], ex["tests"]))
     if sol["error"] or not sol["results"] or not all(r["ok"] for r in sol["results"]):
         problems.append("SOLUTION FAILS %s: %s" % (key, json.dumps(sol)[:600]))
@@ -73,6 +99,12 @@ for path in sorted(glob.glob(os.path.join(HERE, "city", "c*.py"))):
     for j in C["jobs"]:
         assert j["id"] not in core, (lid, j["id"])
         check_ex("%s:%s" % (lid, j["id"]), j)
+    tids = set()
+    for i, tm in enumerate(C["terms"]):
+        tm.setdefault("id", "t%d" % i)
+        if tm["id"] in tids:
+            problems.append("DUPLICATE term id %s:%s" % (lid, tm["id"]))
+        tids.add(tm["id"])
     for r in C["read"]:
         run_pred("%s:%s" % (lid, r["id"]), r)
     for p in C["parsons"]:
@@ -97,8 +129,19 @@ for path in sorted(glob.glob(os.path.join(HERE, "city", "d_*.py"))):
     for q in D["quests"]:
         check_ex("%s:%s" % (t, q["id"]), q)
     check_ex("%s:%s" % (t, D["project"]["id"]), D["project"])
-    for i, p in enumerate(D["exam"]):
-        run_pred("%s:exam%d" % (t, i), p)
+    for i, slot in enumerate(D["exam"]):
+        if slot["lesson"] and slot["lesson"] not in ids_by_lesson:
+            problems.append("EXAM SLOT %d: unknown lesson %s" % (i, slot["lesson"]))
+        for j, p in enumerate(slot["items"]):
+            p.setdefault("id", "x%d_%d" % (i, j))
+            run_pred("%s:exam:%s" % (t, p["id"]), p)
+    for m in D.get("meridian", []):
+        if m["lesson"] not in ids_by_lesson:
+            problems.append("MERIDIAN %s: unknown lesson %s" % (m["id"], m["lesson"]))
+        run_pred("%s:meridian:%s" % (t, m["id"]), m)
+    for a in D["archive"]:
+        if a.get("lesson") and a["lesson"] not in ids_by_lesson:
+            problems.append("ARCHIVE %s: unknown lesson %s" % (a["id"], a["lesson"]))
     districts[t] = D
 
 terms = sum(len(c["terms"]) for c in cities.values())

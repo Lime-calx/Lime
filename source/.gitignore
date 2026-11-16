@@ -1,0 +1,5 @@
+__pycache__/
+*.png
+out/page.html
+pwa/
+out/srv/
