@@ -227,7 +227,7 @@ def run_brython():
     async def main():
         rows = []
         async with async_playwright() as p:
-            b = await p.chromium.launch(executable_path="/usr/bin/google-chrome", args=["--no-sandbox"])
+            b = await p.chromium.launch()
             pg = await b.new_page()
             await pg.goto("http://127.0.0.1:%d/%s/bt.html" % (port, os.path.basename(HERE)))
             await pg.wait_for_function("window.pyReady === true || window.__err", timeout=90000)
