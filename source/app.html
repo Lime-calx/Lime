@@ -532,7 +532,7 @@ pre code,.out code{color:inherit}
 'use strict';
 var CONTENT = /*__CONTENT__*/null;
 var RUNNER_SRC = /*__RUNNER__*/null;
-var APP = {id:'lime', title:'Lime', icon:'🍋‍🟩', color:'#8BD122', version:'2.2.0'};
+var APP = {id:'lime', title:'Lime', icon:'🍋‍🟩', color:'#8BD122', version:'2.2.1'};
 var BRYTHON_BASE = window.__LIME_BRYTHON_BASE || 'https://cdn.jsdelivr.net/npm/brython@3.14.3/';
 
 /* ================= helpers ================= */
@@ -3920,7 +3920,7 @@ function meView(){
   var cloud = Cloud.ref ? ({on:'Synced across your devices through this page.', cached:'Showing saved data. Waiting for the server.', connecting:'Connecting...', slow:'The server is slow to answer. Your progress is saved on this device.', error:'Cloud sync hit an error. Your progress is saved on this device.'}[Cloud.status] || '') : '';
   var gConn = gValid() || LS.get('lime.gconn') === '1';
   wrap.append(h('div', {class:'card'}, h('h2', {class:'h-pix'}, 'CITRUS AND DRIVE'),
-    h('p', {class:'sub'}, 'Lime follows your hub contract: it writes status.json to My Apps/hub/lime and backs up progress to state.json there, so Citrus can see what is due and plan study time. It reads Citrus\'s plan.json for blocks planned for Lime.'),
+    h('p', {class:'sub'}, 'Lime follows your hub contract: it writes status.json to its Drive folder (Citrus/Learning/Tech/Programming - Lime, or My Apps/hub/lime until Citrus moves it; Lime finds it by its tag, so a move never loses it) and backs up progress to state.json there, so Citrus can see what is due and plan study time. It reads Citrus\'s plan.json for blocks planned for Lime.'),
     cloud ? h('p', null, h('strong', null, 'This page: '), cloud, Cloud.last ? ' Last: ' + fmtDateTime(Cloud.last) + '.' : '') : null,
     h('p', null, h('strong', null, 'Google Drive: '), G.unavailable ? 'Google sign-in cannot open in this view. It works in the installed Lime app.' : (gValid() ? 'Connected.' : gConn ? 'Tap Sync to sign in again (Google tokens last an hour).' : 'Not connected.'), G.last ? ' Last sync: ' + fmtDateTime(G.last) + '.' : ''),
     G.lastErr ? h('p', {style:'color:var(--bad)'}, G.lastErr) : null,
@@ -4012,7 +4012,7 @@ function buildStatus(){
     districtsRestored:TRACKS.filter(function(x){ return trackRestored(x.id); }).length, district:nl ? TBY[nl.track].district : null, dayKind:load.kind};
   if (showXp){ extra.streak = calcStreak(); extra.xp = totalXp(); }   /* no-pressure mode: no streak or XP leaves the device */
   var st = {
-    app:APP.id, title:APP.title, icon:HUB_ICON, color:APP.color, url:base, version:APP.version, contract:2,
+    app:APP.id, title:APP.title, icon:HUB_ICON, color:APP.color, url:base, version:APP.version, contract:2, drive:{byTag:true},
     updatedAt:new Date().toISOString(),
     summary:bits.join(' · ') || 'All caught up',
     due:due, estimatedMinutes:minutes, nextDue:(due || nl || rd) ? (load.cap ? 'now' : 'tomorrow') : 'tomorrow',
@@ -4156,6 +4156,44 @@ async function ensurePath(names){
     saveIds(); return id;
   });
 }
+/* Drive layout (Citrus, 17/11/2026): every app folder carries appProperties.citrusApp = '<id>'. Citrus may move or
+   rename it into Citrus/<area>/..., so Lime finds folders by that tag and never by path once a tagged one exists.
+   Several tagged: the oldest is the real one. Nothing tagged: the old path, created and tagged there if missing. */
+async function findTaggedAll(app){
+  var q = "mimeType='" + FOLDER_MIME + "' and trashed=false and appProperties has { key='citrusApp' and value='" + esc(app) + "' }";
+  var j = await (await gapi(DRIVE + '?q=' + encodeURIComponent(q) + '&orderBy=createdTime&pageSize=100&spaces=drive&fields=' + encodeURIComponent('files(id,name,parents,createdTime)'))).json();
+  var all = (j && Array.isArray(j.files)) ? j.files.filter(function(f){ return f && f.id; }) : [];
+  all.sort(byOldest); return all;
+}
+async function tagFolder(id, app){
+  await gapi(DRIVE + '/' + id + '?fields=id', {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({appProperties:{citrusApp:app}})});
+}
+async function appDir(app, oldPath, create){
+  /* create: Lime's own folder (made at the old path and tagged when nothing exists); false: another app's folder (read only) */
+  var key = 'tag:' + app;
+  return once('t:' + app, async function(){
+    var cached = G.ids[key];
+    /* checked once per session (and re-checked every 30 s that it is still there) */
+    if (cached && G.verified[key] === cached){
+      if (Date.now() - (G.aliveAt[key] || 0) < 30000) return cached;
+      if (await folderAlive(cached)){ G.aliveAt[key] = Date.now(); return cached; }
+      dropPath(key); cached = null;
+    }
+    var tagged = await findTaggedAll(app), id = null;
+    if (tagged.length){
+      id = tagged[0].id;
+      if (tagged.length > 1 && create) G.heal = true;
+    } else if (create){
+      id = await ensurePath(oldPath);
+      try { await tagFolder(id, app); } catch(e){ if (e.status === 401) throw e; }   /* untagged still works; Citrus tags it too */
+    } else {
+      id = await findPath(oldPath);
+    }
+    if (id){ G.ids[key] = id; G.verified[key] = id; G.aliveAt[key] = Date.now(); saveIds(); }
+    return id;
+  });
+}
+function limeDir(){ return appDir(APP.id, LIME_DIR, true); }
 async function findPath(names){ var id = 'root'; for (var i = 0; i < names.length; i++){ var f = await findOne(names[i], id, true); if (!f) return null; id = f.id; } return id; }
 async function sha(text){
   try { var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)); return Array.prototype.map.call(new Uint8Array(buf), function(b){ return b.toString(16).padStart(2, '0'); }).join('').slice(0, 40); }
@@ -4214,7 +4252,7 @@ async function gPushStatus(force){
       return {deferred:true};
     }
   }
-  var dir = await ensurePath(LIME_DIR), r = await putJson(dir, 'status.json', buildStatus(), {heal:'all'});
+  var dir = await limeDir(), r = await putJson(dir, 'status.json', buildStatus(), {heal:'all'});
   G.statusAt = Date.now(); G.statusH = r.h || ''; G.statusId = r.id || ''; return r;
 }
 function stateDoc(){ var st = Object.assign({}, S); delete st.set; delete st.devId; return {app:APP.id, v:2, updatedAt:new Date().toISOString(), state:JSON.parse(JSON.stringify(st))}; }
@@ -4239,6 +4277,8 @@ async function healTwins(dir){
   var tops = await findAll('My Apps', 'root', true), limes = [], hubs = [];
   for (var i = 0; i < tops.length; i++){ var hs = await findAll('hub', tops[i].id, true); for (var j = 0; j < hs.length; j++) hubs.push(hs[j]); }
   for (var k = 0; k < hubs.length; k++){ var ls = await findAll('lime', hubs[k].id, true); for (var m = 0; m < ls.length; m++) limes.push(ls[m]); }
+  var tagged = await findTaggedAll(APP.id);
+  for (var t = 0; t < tagged.length; t++) if (!limes.some(function(f){ return f.id === tagged[t].id; })) limes.push(tagged[t]);
   var others = limes.filter(function(f){ return f.id !== dir; });
   for (var n = 0; n < others.length; n++){
     var states = await findAll('state.json', others[n].id, false), read = await mergeFiles(states);
@@ -4248,11 +4288,12 @@ async function healTwins(dir){
     if (await isEmptyFolder(others[n].id)) await trashFile(others[n].id);
   }
   var keep = [G.ids['My Apps'], G.ids['My Apps/hub']];
+  if (!keep[0] || !keep[1]) return;   /* the folder was found by tag: My Apps belongs to Citrus now (it archives it once empty) */
   for (var c = 0; c < hubs.length; c++) if (keep.indexOf(hubs[c].id) < 0 && await isEmptyFolder(hubs[c].id)) await trashFile(hubs[c].id);
   for (var e = 0; e < tops.length; e++) if (keep.indexOf(tops[e].id) < 0 && await isEmptyFolder(tops[e].id)) await trashFile(tops[e].id);
 }
 async function gSyncState(){
-  var dir = await ensurePath(LIME_DIR);
+  var dir = await limeDir();
   G.changed = false;
   if (G.heal) await healTwins(dir);
   /* HUB rule 9: merge, write, then read the rev back; another round if someone else wrote in between */
@@ -4280,7 +4321,7 @@ function cleanShift(v){
 }
 function planReset(){ G.plan = []; G.planDays = {}; G.planAt = Date.now(); }
 async function gLoadPlan(){
-  var dir = await findPath(CITRUS_DIR);
+  var dir = await appDir('citrus', CITRUS_DIR, false);
   if (!dir) return planReset();
   var f = await findOne('plan.json', dir, false);
   if (!f) return planReset();
@@ -4299,7 +4340,7 @@ async function gLoadPlan(){
   G.planAt = Date.now();
 }
 /* HUB rule 10: one request answers "did anything Lime cares about move?" */
-var WATCH = /^(My Apps|hub|lime|citrus|state\.json|status\.json|plan\.json)$/;
+var WATCH = /^(My Apps|hub|lime|citrus|Citrus|00 Hub|Tech|Learning|Programming - Lime|state\.json|status\.json|plan\.json)$/;
 async function gToken(){ try { var j = await (await gapi('https://www.googleapis.com/drive/v3/changes/startPageToken')).json(); G.pageToken = (j && j.startPageToken) || ''; } catch(e){ G.pageToken = ''; } }
 async function quietSinceLast(){
   var known = {}; for (var k in G.ids) known[G.ids[k]] = 1; if (G.statusId) known[G.statusId] = 1;

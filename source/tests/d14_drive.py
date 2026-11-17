@@ -65,6 +65,10 @@ class Drive:
             return await J({'changes': ch, 'newStartPageToken': str(len(self.log) + 1)})
         if p == '/drive/v3/files' and method == 'GET':
             q = qs['q'][0]
+            tg = re.search(r"appProperties has \{ key='(\w+)' and value='([^']*)' \}", q)
+            if tg:
+                hits = sorted([f for f in self.files.values() if not self.gone(f) and f['mimeType'] == FOLDER and f['appProperties'].get(tg.group(1)) == tg.group(2)], key=lambda f: f['createdTime'])
+                return await J({'files': [{k: f[k] for k in ('id', 'name', 'parents', 'createdTime')} for f in hits]})
             nm = re.search(r"name='((?:[^'\\]|\\.)*)'", q); parent = re.search(r"'([^']*)' in parents", q).group(1)
             hits = [f for f in self.files.values() if parent in f['parents'] and not (('trashed=false' in q) and self.gone(f))]
             if nm: hits = [f for f in hits if f['name'] == nm.group(1).replace("\\'", "'")]
@@ -79,7 +83,7 @@ class Drive:
             f = self.files.get(mm.group(1))
             if not f: return await J({'error': {'code': 404}}, 404)
             if method == 'PATCH':
-                body = json.loads(req.post_data or '{}'); f.update(body); f['modifiedTime'] = self.ts(); self.log.append(f['id']); return await J({'id': f['id']})
+                body = json.loads(req.post_data or '{}'); f['appProperties'].update(body.pop('appProperties', {}) or {}); f.update(body); f['modifiedTime'] = self.ts(); self.log.append(f['id']); return await J({'id': f['id']})
             if qs.get('alt') == ['media']:
                 if fulfill: await route.fulfill(status=200, headers=CORS, body=f['content'] or '')
                 return
@@ -103,7 +107,7 @@ class Drive:
         return ma, hub, cf
 
     def lime_states(self):
-        return [json.loads(f['content']) for f in self.live('state.json') if self.files[f['parents'][0]]['name'] == 'lime']
+        return [json.loads(f['content']) for f in self.live('state.json') if self.files[f['parents'][0]]['appProperties'].get('citrusApp', 'lime') == 'lime' and self.files[f['parents'][0]]['name'] in ('lime', 'Programming - Lime')]
 
 WORK = """(tag) => { const S = JSON.parse(JSON.stringify(__lime.state())); S.done['w:' + tag] = {t: Date.now(), n: 1}; S.updatedAt = Date.now(); __lime.setState(S); return 1; }"""
 THEME = """(t) => { const S = JSON.parse(JSON.stringify(__lime.state())); S.set.theme = t; __lime.setState(S); }"""
@@ -281,6 +285,49 @@ async def main():
                 await p1; d.delay = 0
                 check(r, 'manual sync during a running sync is queued and runs')
             await scenario(b, 'tap during a sync', lambda d: d.seed_citrus(), queued, devs=1)
+            # ---- Drive layout (claude/drive-layout.md, 17/11/2026): folders found by tag ----
+            async def tag_fresh(d, A):
+                await A.evaluate(SYNC)
+                lime = d.path('My Apps', 'hub', 'lime')
+                check(len(lime) == 1 and d.files[lime[0]]['appProperties'].get('citrusApp') == 'lime', 'nothing tagged: old path created and tagged citrusApp=lime')
+                st = json.loads(d.live('status.json')[0]['content'])
+                check(st.get('drive') == {'byTag': True}, 'status.json says drive.byTag: %s' % st.get('drive'))
+                res = await A.evaluate("async (s) => { const m = await import('/citrus/js/inbound.js'); return m.normalizeStatus(s).issues; }", st)
+                check(res == [], 'Citrus normalizeStatus still zero issues with drive.byTag %s' % res)
+            await scenario(b, 'tag: fresh Drive', lambda d: d.seed_citrus(), tag_fresh, devs=1)
+
+            def moved(d):
+                # what Citrus organiseDrive leaves behind: tagged folders moved and renamed under Citrus/, My Apps/hub empty
+                ma, hub, cf = d.seed_citrus({'days': {}, 'blocks': [{'app': 'lime', 'date': time.strftime('%Y-%m-%d'), 'start': '18:00', 'end': '18:45', 'title': 'Lime: tagged plan', 'status': 'accepted'}]})
+                old = d.add('lime', hub, props={'citrusApp': 'lime'})
+                d.add('state.json', old, 'application/json', json.dumps({'app': 'lime', 'v': 2, 'state': {'done': {'w:old': {'t': 1, 'n': 1}}}}))
+                root = d.add('Citrus'); h0 = d.add('00 Hub', root, props={'citrusArea': 'hub'}); learn = d.add('Learning', root); tech = d.add('Tech', learn)
+                d.files[old]['parents'] = [tech]; d.files[old]['name'] = 'Programming - Lime'
+                d.files[cf]['parents'] = [h0]; d.files[cf]['name'] = 'Citrus'; d.files[cf]['appProperties']['citrusApp'] = 'citrus'
+                d.moved = old
+            async def tag_moved(d, A):
+                await A.evaluate(WORK, 'A'); await A.evaluate(SYNC)
+                check(not d.path('My Apps', 'hub', 'lime'), 'after the move Lime creates no My Apps/hub/lime again')
+                sts = d.live('state.json')
+                check(len(sts) == 1 and sts[0]['parents'] == [d.moved], 'state.json written in the moved, renamed folder')
+                check(await A.evaluate(DONE) == 'w:A,w:old', 'progress from the moved folder merged: %s' % await A.evaluate(DONE))
+                ss = d.live('status.json')
+                check(len(ss) == 1 and ss[0]['parents'] == [d.moved], 'status.json in the moved folder')
+                titles = await A.evaluate("JSON.stringify(__lime.G.plan.map(b => b.title))")
+                check('tagged plan' in titles, 'plan.json read from the tagged Citrus folder: %s' % titles)
+                check(not [f for f in d.files.values() if f['trashed']], 'nothing trashed (My Apps belongs to Citrus)')
+            await scenario(b, 'tag: folder moved by Citrus', moved, tag_moved, devs=1)
+
+            def two_tagged(d):
+                d.seed_citrus(); a = d.add('Programming - Lime', props={'citrusApp': 'lime'}); bb = d.add('lime copy', props={'citrusApp': 'lime'})
+                d.add('state.json', bb, 'application/json', json.dumps({'app': 'lime', 'v': 2, 'state': {'done': {'w:twin': {'t': 1, 'n': 1}}}}))
+                d.oldest = a
+            async def tag_two(d, A):
+                await A.evaluate(SYNC); await A.evaluate(SYNC)
+                live = [f for f in d.live('state.json')]
+                check(len(live) == 1 and live[0]['parents'] == [d.oldest], 'two tagged folders: the oldest is used, the twin merged')
+                check('w:twin' in await A.evaluate(DONE), 'twin progress kept')
+            await scenario(b, 'tag: two tagged folders', two_tagged, tag_two, devs=1)
             await b.close()
     finally:
         srv.terminate(); shutil.rmtree(srv_dir, ignore_errors=True)

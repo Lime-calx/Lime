@@ -1,5 +1,5 @@
 /* Lime service worker: offline shell, cache-first; a new version waits until the user taps Update. */
-const VERSION = '2.2.0-949db24203';
+const VERSION = '2.2.1-72f34d560a';
 const SHELL = 'lime-shell-' + VERSION;
 const FONTS = 'lime-fonts';
 const FILES = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-180.png", "icons/favicon.png", "vendor/brython/brython.min.js", "vendor/brython/brython_stdlib.js"];

@@ -20,6 +20,8 @@ FAKE = r"""
     const json = (x) => new Response(JSON.stringify(x), {status:200, headers:{'Content-Type':'application/json'}});
     if (u.pathname === '/drive/v3/files' && (o.method||'GET') === 'GET'){
       const q = u.searchParams.get('q');
+      const tag = /appProperties has \{ key='(\w+)' and value='([^']*)' \}/.exec(q);
+      if (tag) return json({files: Object.values(files).filter(f => !f.trashed && f.mimeType === 'application/vnd.google-apps.folder' && (f.appProperties||{})[tag[1]] === tag[2]).map(f => ({id:f.id, name:f.name, parents:f.parents, createdTime:'2026-01-01T00:00:0' + f.id.slice(1) + 'Z'}))});
       const name = /name='([^']*)'/.exec(q)[1], parent = /'([^']*)' in parents/.exec(q)[1], folder = q.includes("mimeType='application");
       const hit = Object.values(files).filter(f => f.name === name && f.parents.includes(parent) && !f.trashed && ((f.mimeType === 'application/vnd.google-apps.folder') === folder));
       return json({files: hit.map(f => ({id:f.id, name:f.name, appProperties:f.appProperties}))});
@@ -28,7 +30,7 @@ FAKE = r"""
     if (u.pathname === '/drive/v3/changes/startPageToken') return json({startPageToken:'1'});
     if (u.pathname === '/drive/v3/changes') return json({newStartPageToken:'1', changes:[]});
     const mm = /^\/drive\/v3\/files\/(\w+)$/.exec(u.pathname);
-    if (mm){ const f = files[mm[1]]; if (!f) return new Response('{}', {status:404}); if (o.method === 'PATCH'){ Object.assign(f, JSON.parse(o.body || '{}')); return json({id:f.id}); } if (u.searchParams.get('alt') === 'media') return new Response(f.content); return json({id:f.id}); }
+    if (mm){ const f = files[mm[1]]; if (!f) return new Response('{}', {status:404}); if (o.method === 'PATCH'){ const b = JSON.parse(o.body || '{}'); if (b.appProperties){ f.appProperties = Object.assign({}, f.appProperties, b.appProperties); delete b.appProperties; } Object.assign(f, b); return json({id:f.id}); } if (u.searchParams.get('alt') === 'media') return new Response(f.content); return json({id:f.id}); }
     const up = /^\/upload\/drive\/v3\/files(?:\/(\w+))?$/.exec(u.pathname);
     if (up){
       const parts = o.body.split(/--lime\w+/); const meta = JSON.parse(parts[1].split('\r\n\r\n')[1]); const content = parts[2].split('\r\n\r\n').slice(1).join('\r\n\r\n').replace(/\r\n$/, '');
